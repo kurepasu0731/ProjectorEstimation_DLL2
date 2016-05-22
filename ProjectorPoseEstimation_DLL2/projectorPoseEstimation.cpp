@@ -63,9 +63,12 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat& camframe, cons
 
 		int result = 0;
 		if(mode == 1)
-			result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
+			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, initialR, initialT, dstR, dstT, draw_projimage);
+
 		else if(mode == 2)
-			result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
+			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
+			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, dstR, dstT, draw_projimage);
 
 		if(result > 0) return true;
 		else return false;
@@ -414,11 +417,173 @@ void ProjectorEstimation::calcAveragePoint(std::vector<cv::Point3f> imageWorldPo
 }
 
 
+//****チェッカパターンによる推定の場合****
+
+//チェッカボード検出によるプロジェクタ位置姿勢を推定
+bool ProjectorEstimation::findProjectorPose(cv::Mat frame, cv::Mat& initialR, cv::Mat& initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage){
+	//cv::Mat undist_img1;
+	////カメラ画像の歪み除去
+	//cv::undistort(frame, undist_img1, camera.cam_K, camera.cam_dist);
+	//コーナー検出
+	//getCheckerCorners(cameraImageCorners, undist_img1, draw_image);
+
+	//チェッカパターン検出(カメラ画像は歪んだまま)
+	bool detect = getCheckerCorners(cameraImageCorners, frame, draw_image);
+
+	//検出できたら、位置推定開始
+	if(detect)
+	{
+		// 対応点の歪み除去
+		std::vector<cv::Point2f> undistort_imagePoint;
+		std::vector<cv::Point2f> undistort_projPoint;
+		cv::undistortPoints(cameraImageCorners, undistort_imagePoint, camera->cam_K, camera->cam_dist);
+		cv::undistortPoints(projectorImageCorners, undistort_projPoint, projector->cam_K, projector->cam_dist);
+		for(int i=0; i<cameraImageCorners.size(); ++i)
+		{
+			undistort_imagePoint[i].x = undistort_imagePoint[i].x * camera->cam_K.at<double>(0,0) + camera->cam_K.at<double>(0,2);
+			undistort_imagePoint[i].y = undistort_imagePoint[i].y * camera->cam_K.at<double>(1,1) + camera->cam_K.at<double>(1,2);
+			undistort_projPoint[i].x = undistort_projPoint[i].x * projector->cam_K.at<double>(0,0) + projector->cam_K.at<double>(0,2);
+			undistort_projPoint[i].y = undistort_projPoint[i].y * projector->cam_K.at<double>(1,1) + projector->cam_K.at<double>(1,2);
+		}
+
+		//int result = calcProjectorPose(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, chessimage);
+		int result = calcProjectorPose(undistort_imagePoint, projectorImageCorners, initialR, initialT, dstR, dstT, chessimage);
+		if(result > 0) return true;
+		else return false;
+	}
+	else{
+		return false;
+	}
+}
+
+//計算部分(Rの自由度3)
+int ProjectorEstimation::calcProjectorPose(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, cv::Mat& initialR, cv::Mat& initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage)
+{
+	//回転行列から回転ベクトルにする
+	cv::Mat initRVec(3, 1,  CV_64F, cv::Scalar::all(0));
+	Rodrigues(initialR, initRVec);
+	cv::Mat initTVec = (cv::Mat_<double>(3, 1) << initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0));
+
+	int n = 6; //変数の数
+	int info;
+	double level = 1.0; //動きベクトルの大きさ
+
+	VectorXd initial(n);
+	initial <<
+		initRVec.at<double>(0, 0),
+		initRVec.at<double>(1, 0),
+		initRVec.at<double>(2, 0),
+		initTVec.at<double>(0, 0),
+		initTVec.at<double>(1, 0),
+		initTVec.at<double>(2, 0);
+
+	//3次元座標が取れた対応点のみを抽出してからLM法に入れる
+	std::vector<cv::Point3f> reconstructPoints_valid;
+	std::vector<cv::Point2f> projPoints_valid;
+	for(int i = 0; i < imagePoints.size(); i++)
+	{
+		int image_x = (int)(imagePoints[i].x+0.5);
+		int image_y = (int)(imagePoints[i].y+0.5);
+		int index = image_y * camera->width + image_x;
+		if(reconstructPoints[index].x != -1)
+		{
+			reconstructPoints_valid.emplace_back(reconstructPoints[index]);
+			projPoints_valid.emplace_back(projPoints[i]);
+		}
+	}
+
+	misra1a_functor functor(n, projPoints_valid.size(), projPoints_valid, reconstructPoints_valid, projector->cam_K);
+	//misra1a_functor functor(n, projPoints_valid.size(), projPoints_valid, reconstructPoints_valid, projK_34);
+    
+	NumericalDiff<misra1a_functor> numDiff(functor);
+	LevenbergMarquardt<NumericalDiff<misra1a_functor> > lm(numDiff);
+	info = lm.minimize(initial); //info=2がかえってくる 時々5
+    
+	//std::cout << "学習結果: " << std::endl;
+	//std::cout <<
+	//	initial[0] << " " <<
+	//	initial[1] << " " <<
+	//	initial[2] << " " <<
+	//	initial[3] << " " <<
+	//	initial[4] << " " <<
+	//	initial[5]	 << std::endl;
+
+	//出力
+	cv::Mat dstRVec = (cv::Mat_<double>(3, 1) << initial[0], initial[1], initial[2]);
+	Rodrigues(dstRVec, dstR);
+	dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
+	cv::Mat dstTVec = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);//保持用
+
+	//対応点の様子を描画
+	std::vector<cv::Point2f> pt;
+	cv::projectPoints(reconstructPoints_valid, dstRVec, dstTVec, projector->cam_K, cv::Mat(), pt); 
+	for(int i = 0; i < projPoints_valid.size(); i++)
+	{
+		cv::circle(chessimage, projPoints_valid[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
+		cv::circle(chessimage, pt[i], 5, cv::Scalar(255, 0, 0), 3);//カメラは青
+	}
+	//重心も描画
+	cv::Point2f imageWorldPointAve;
+	cv::Point2f projAve;
+	calcAveragePoint(reconstructPoints_valid, projPoints_valid, dstRVec, dstTVec,imageWorldPointAve, projAve);
+	cv::circle(chessimage, projAve, 8, cv::Scalar(0, 0, 255), 10);//プロジェクタは赤
+	cv::circle(chessimage, imageWorldPointAve, 8, cv::Scalar(255, 0, 0), 10);//カメラは青
+
+	//動きベクトル更新
+	//dR = initRVec - dstRVec;
+	//dt = initTVec - dstTVec;
+
+	//std::cout << "-----\ndR: \n" << dR << std::endl;
+	//std::cout << "dT: \n" << dt << std::endl;
+
+
+	std::cout << "info: " << info << std::endl;
+	return info;
+}
+
+//カメラ画像をチェッカパターン検出する
+bool ProjectorEstimation::getCheckerCorners(std::vector<cv::Point2f>& imagePoint, const cv::Mat &image, cv::Mat &draw_image)
+{
+	//交点検出
+	bool detect = cv::findChessboardCorners(image, checkerPattern, imagePoint);
+
+	//検出点の描画
+	image.copyTo(draw_image);
+	if(detect)
+	{
+		//サブピクセル精度
+		cv::Mat gray;
+		cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+		cv::cornerSubPix( gray, imagePoint, cv::Size( 11, 11 ), cv::Size( -1, -1 ), cv::TermCriteria( cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, 20, 0.001 ) );
+
+		cv::drawChessboardCorners(draw_image, checkerPattern, imagePoint, true);
+	}else
+	{
+		cv::drawChessboardCorners(draw_image, checkerPattern, imagePoint, false);
+	}
+
+	return detect;
+}
+
+
+//プロジェクタ画像上の交点座標を求める
+void ProjectorEstimation::getProjectorImageCorners(std::vector<cv::Point2f>& projPoint, int _row, int _col, int _blockSize, int _x_offset, int _y_offset)
+{
+	for (int y = 0; y < _row; y++)
+	{
+		for(int x = 0; x < _col; x++)
+		{
+			projPoint.push_back(cv::Point2f(_x_offset + x * _blockSize, _y_offset + y * _blockSize));
+		}
+	}
+}
+
+
 //******外部にさらす用********//
 
-DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight)
+DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 {
-	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight));	
+	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset));	
 }
 
 //パラメータファイル、3次元復元ファイル読み込み
@@ -459,10 +624,15 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	cv::Mat initT = (cv::Mat_<double>(3,1) << _initT[0], _initT[1], _initT[2]);
 	cv::Mat dstR, dstT;
 	cv::Mat cam_drawimg = cam_img.clone();
+	cv::Mat proj_drawing = pe->proj_img.clone();
+
+	bool result = false;
 
 	//位置推定メソッド呼び出し
-	bool result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, 
-																	camCornerNum, camMinDist, projCornerNum, projMinDist, mode, cam_drawimg, pe->proj_drawimg);
+	if(mode == 3)//チェッカパターン検出による推定
+		result = pe->findProjectorPose(cam_img, initR, initT, dstR, dstT, cam_drawimg, proj_drawing);
+	else         //コーナー検出による推定
+		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, mode, cam_drawimg, proj_drawing);
 
 	if(result)
 	{
@@ -488,7 +658,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	cv::Mat resize_cam, resize_proj;
 	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.5, 0.5);
 	cv::imshow("Camera detected corners", resize_cam);
-	cv::resize(pe->proj_drawimg, resize_proj, cv::Size(), 0.5, 0.5);
+	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.5, 0.5);
 	cv::imshow("Projector detected corners", resize_proj);
 
 	return result;
