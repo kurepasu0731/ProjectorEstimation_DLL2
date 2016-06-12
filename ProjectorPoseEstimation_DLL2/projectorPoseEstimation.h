@@ -48,6 +48,9 @@ public:
 	//プロジェクタ画像
 	cv::Mat proj_img, proj_undist;
 
+	//3 * 4形式ののプロジェクタ内部行列
+	cv::Mat projK_34;
+
 
 	//コンストラクタ
 	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile,  int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
@@ -81,7 +84,7 @@ public:
 		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
-	bool findProjectorPose(cv::Mat frame, cv::Mat& initialR, cv::Mat& initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
+	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
 
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
@@ -102,13 +105,20 @@ private:
 	//チェッカパターンによる推定の場合
 
 	//計算部分(Rの自由度3)
-	int calcProjectorPose(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, cv::Mat& initialR, cv::Mat& initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage);
+	int calcProjectorPose(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage);
 
 	//カメラ画像をチェッカパターン検出する
 	bool getCheckerCorners(std::vector<cv::Point2f>& imagePoint, const cv::Mat &image, cv::Mat &draw_image);
 
 	//プロジェクタ画像上の交点座標を求める
 	void getProjectorImageCorners(std::vector<cv::Point2f>& projPoint, int _row, int _col, int _blockSize, int _x_offset, int _y_offset);
+
+	//回転行列→クォータニオン
+	bool transformRotMatToQuaternion(
+		float &qx, float &qy, float &qz, float &qw,
+		float m11, float m12, float m13,
+		float m21, float m22, float m23,
+		float m31, float m32, float m33);
 
 
 };
