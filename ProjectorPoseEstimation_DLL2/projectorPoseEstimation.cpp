@@ -196,6 +196,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		std::vector<cv::Point2f> imagePoints_order;
 		
 		for(int i = 0; i < projPoints.size(); i++){
+			//TODO: pptとprojPointsが閾値以上離れていたら、外れ値として除去
 			reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
 			imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
 		}
