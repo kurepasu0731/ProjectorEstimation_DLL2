@@ -51,6 +51,8 @@ public:
 	//3 * 4形式ののプロジェクタ内部行列
 	cv::Mat projK_34;
 
+	//カメラ画像(歪みなし)のマスク
+	cv::Mat CameraMask;
 
 	//コンストラクタ
 	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile,  int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
@@ -139,5 +141,8 @@ extern "C" {
 	{
 		cv::destroyAllWindows();
 	};
+
+	//カメラ画像用マスクの作成
+	DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data);
 }
 #endif

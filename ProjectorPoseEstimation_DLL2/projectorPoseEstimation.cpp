@@ -109,13 +109,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		VectorXd initial(n);
 		initial << x, y, z, initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0);
 		//initial << x, y, z, initTVec.at<double>(0, 0), initTVec.at<double>(1, 0), initTVec.at<double>(2, 0);
-		//initial <<
-		//	initRVec.at<double>(0, 0) + dR.at<double>(0, 0) * level,
-		//	initRVec.at<double>(1, 0) + dR.at<double>(1, 0) * level,
-		//	initRVec.at<double>(2, 0) + dR.at<double>(2, 0) * level,
-		//	initTVec.at<double>(0, 0) + dt.at<double>(0, 0) * level,
-		//	initTVec.at<double>(1, 0) + dt.at<double>(1, 0) * level,
-		//	initTVec.at<double>(2, 0) + dt.at<double>(2, 0) * level;
 
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
 		std::vector<cv::Point3f> reconstructPoints_valid;
@@ -126,10 +119,15 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			int image_x = (int)(imagePoints[i].x+0.5);
 			int image_y = (int)(imagePoints[i].y+0.5);
 			int index = image_y * camera->width + image_x;
+			//-1はプロジェクタ投影領域外、-2はカメラ画像上での対象物のエリアを意味する
 			if(0 <= image_x && image_x < camera->width && 0 <= image_y && image_y < camera->height && reconstructPoints[index].x != -1 && reconstructPoints[index].x != -2)
 			{
-				reconstructPoints_valid.emplace_back(reconstructPoints[index]);
-				imagePoints_valid.emplace_back(imagePoints[i]);
+				//マスク領域のコーナー点は除外
+				if(CameraMask.data[index + 0] != 0 && CameraMask.data[index + 1] != 0 && CameraMask.data[index + 2] != 0 )
+				{
+					reconstructPoints_valid.emplace_back(reconstructPoints[index]);
+					imagePoints_valid.emplace_back(imagePoints[i]);
+				}
 			}
 		}
 
@@ -269,10 +267,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		//cv::circle(chessimage, imageWorldPointAve, 8, cv::Scalar(255, 0, 0), 10);//カメラは青
 
 		std::cout << "reprojection error ave : " << (double)(aveError / projPoints.size()) << std::endl;
-
-		//動きベクトル更新
-		//dR = initRVec - dstRVec;
-		//dt = initTVec - dstTVec;
 
 		_dstR.copyTo(dstR);
 		_dstT.copyTo(dstT);
@@ -894,5 +888,30 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 	return result;
 }
+
+//カメラ画像用マスクの作成
+DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data)
+{
+	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
+
+	//カメラ画像をMatに復元
+	cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC4, cam_data);
+	//プロジェクタ画像はUnity側で生成されたので、反転とかする
+	//BGR <-- ARGB 変換
+	cv::Mat bgr_img, flip_cam_img;
+	std::vector<cv::Mat> bgra;
+	cv::split(cam_img, bgra);
+	std::swap(bgra[0], bgra[3]);
+	std::swap(bgra[1], bgra[2]);
+	cv::cvtColor(cam_img, bgr_img, CV_BGRA2BGR);
+	//x軸反転
+	cv::flip(bgr_img, flip_cam_img, 0);
+
+	pe->CameraMask = flip_cam_img.clone();
+
+	//一応保存
+	cv::imwrite("CameraMask.png", pe->CameraMask);
+}
+
 
 
