@@ -80,7 +80,7 @@ public:
 	void loadReconstructFile(const std::string& filename);
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
-	bool findProjectorPose_Corner(const cv::Mat& camframe, const cv::Mat projframe, cv::Mat& initialR, cv::Mat& initialT, cv::Mat &dstR, cv::Mat &dstT, 
+	bool findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
 		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
@@ -89,11 +89,11 @@ public:
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
 	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
-												cv::Mat& initialR, cv::Mat& initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage);
+												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)
 	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
-												cv::Mat& initialR, cv::Mat& initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage);
+												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//コーナー検出
 	bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
@@ -115,10 +115,10 @@ private:
 
 	//回転行列→クォータニオン
 	bool transformRotMatToQuaternion(
-		float &qx, float &qy, float &qz, float &qw,
-		float m11, float m12, float m13,
-		float m21, float m22, float m23,
-		float m31, float m32, float m33);
+		double &qx, double &qy, double &qz, double &qw,
+		double m11, double m12, double m13,
+		double m21, double m22, double m23,
+		double m31, double m32, double m33);
 
 
 };
@@ -131,7 +131,7 @@ extern "C" {
 	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);
 
 	//プロジェクタ位置推定コア呼び出し
-	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
+	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 																	double initR[], double initT[], double dstR[], double dstT[],
 																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode);
 	//ウィンドウ破棄
