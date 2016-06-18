@@ -83,18 +83,18 @@ public:
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
+		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, float thresh, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
 
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
-	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
+	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, float thresh,
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)
-	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
+	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, float thresh, 
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//コーナー検出
@@ -135,7 +135,7 @@ extern "C" {
 	//プロジェクタ位置推定コア呼び出し
 	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 																	double initR[], double initT[], double dstR[], double dstT[],
-																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode);
+																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, float thresh, int mode);
 	//ウィンドウ破棄
 	DLLExport void destroyAllWindows()
 	{
