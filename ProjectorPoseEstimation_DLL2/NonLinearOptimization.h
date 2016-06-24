@@ -30,12 +30,11 @@ using namespace std;
 	struct misra1a_functor : Functor<double>
 	{
 		// 目的関数
-		misra1a_functor(int inputs, int values, std::vector<cv::Point2f>& proj_p, std::vector<cv::Point3f>& world_p, const cv::Mat& proj_K, const cv::Mat& _projK_34)
+		misra1a_functor(int inputs, int values, std::vector<cv::Point2f>& proj_p, std::vector<cv::Point3f>& world_p, const cv::Mat& _projK_34)
 			: inputs_(inputs),
 			  values_(values), 
 			  proj_p_(proj_p),
 			  worldPoints_(world_p),
-			  projK(proj_K),
 			  projK_34(_projK_34){}
 			  //cam_p_(cam_p), 
 			  //reconstructPoints_(reconstructPoints),
@@ -46,7 +45,7 @@ using namespace std;
     
 		vector<cv::Point2f> proj_p_;
 		vector<cv::Point3f> worldPoints_;
-		const cv::Mat projK;
+		vector<double> weight;
 		const cv::Mat projK_34;
 
 		//**エピポーラ方程式を用いた最適化**//
@@ -98,7 +97,7 @@ using namespace std;
 												   0, 0, 0, 1);
 				cv::Mat dst_p = projK_34 * Rt * wp;
 				cv::Point2d project_p(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-				// 射影誤差算出
+				// 射影誤差算出(重みをつける)
 				fvec[i] = sqrt(pow(project_p.x - proj_p_[i].x, 2) + pow(project_p.y - proj_p_[i].y, 2));
 				//std::cout << "fvec[" << i << "]: " << fvec[i] << std::endl;
 			}
