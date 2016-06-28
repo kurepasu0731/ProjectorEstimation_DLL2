@@ -5,6 +5,7 @@
 
 #include "WebCamera.h"
 #include "NonLinearOptimization.h"
+#include "KalmanFilter.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -57,6 +58,9 @@ public:
 	//対応点とするかどうかの閾値
 	double thresh;
 
+	//カルマンフィルタ
+	Kalmanfilter kf;
+
 	//コンストラクタ
 	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh)
 	{
@@ -65,6 +69,7 @@ public:
 		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
 		thresh = _thresh;
+		kf.initKalmanfilter(6, 3, 0, 1);
 
 		//プロジェクタ画像読み込み,描画用画像作成
 		proj_img = cv::imread(backgroundImgFile);
