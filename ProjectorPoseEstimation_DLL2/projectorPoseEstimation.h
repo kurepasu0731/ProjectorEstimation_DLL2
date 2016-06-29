@@ -10,15 +10,15 @@
 #include <opencv2/opencv.hpp>
 
 //PCL
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl/visualization/pcl_visualizer.h>
+//#include <pcl/io/pcd_io.h>
+//#include <pcl/point_types.h>
+//#include <pcl/visualization/pcl_visualizer.h>
 
 #include <flann/flann.hpp>
 #include <boost/shared_array.hpp>
 
 
-#define DLLExport __declspec (dllexport)
+//#define DLLExport __declspec (dllexport)
 
 
 //using namespace cv;
@@ -134,7 +134,7 @@ private:
 
 };
 
-
+/*
 extern "C" {
 	//ProjectorEstimationインスタンス生成
 	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh); 
@@ -156,4 +156,5 @@ extern "C" {
 	DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data);
 
 }
+*/
 #endif

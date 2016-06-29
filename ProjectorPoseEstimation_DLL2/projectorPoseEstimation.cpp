@@ -1,4 +1,5 @@
 #include "projectorPoseEstimation.h"
+#include "DebugLogWrapper.h"
 
 
 //キャリブレーションファイル読み込み
@@ -284,10 +285,14 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				aveError += error;
 			}
 
+			//対応点の平均再投影誤差
 			aveError /= projPoints_valid.size();
 			std::cout << "reprojection error ave : " << aveError << std::endl;
 			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			double percent = (projPoints_valid.size() * 100) / projPoints.size();
+
+			std::string log = "aveError: " + std::to_string(aveError) + " --- valid points: " + std::to_string(percent) + "%";
+			debug_log(log);
 
 			//閾値の更新
 			if(thresh > 10)
@@ -794,7 +799,7 @@ bool ProjectorEstimation::transformRotMatToQuaternion(
 
 
 //******外部にさらす用********//
-
+/*
 DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh)
 {
 	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset, _thresh));	
@@ -944,6 +949,4 @@ DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_da
 	//一応保存
 	cv::imwrite("CameraMask.png", pe->CameraMask);
 }
-
-
-
+*/

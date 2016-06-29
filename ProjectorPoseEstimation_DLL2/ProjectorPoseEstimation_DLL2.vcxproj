@@ -150,12 +150,15 @@
   <ItemGroup>
     <ClCompile Include="Kalmanfilter.cpp" />
     <ClCompile Include="projectorPoseEstimation.cpp" />
+    <ClCompile Include="wrapperForUnity.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DebugLogWrapper.h" />
     <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="NonLinearOptimization.h" />
     <ClInclude Include="projectorPoseEstimation.h" />
     <ClInclude Include="WebCamera.h" />
+    <ClInclude Include="wrapperForUnity.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
