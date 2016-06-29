@@ -148,9 +148,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Kalmanfilter.cpp" />
     <ClCompile Include="projectorPoseEstimation.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="KalmanFilter.h" />
     <ClInclude Include="NonLinearOptimization.h" />
     <ClInclude Include="projectorPoseEstimation.h" />
     <ClInclude Include="WebCamera.h" />
