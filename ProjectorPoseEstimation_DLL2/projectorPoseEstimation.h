@@ -56,19 +56,18 @@ public:
 	cv::Mat CameraMask;
 
 	//対応点とするかどうかの閾値
-	double thresh;
+	//double thresh;
 
 	//カルマンフィルタ
 	Kalmanfilter kf;
 
 	//コンストラクタ
-	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh)
+	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 	{
 		camera = new WebCamera(camwidth, camheight);
 		projector = new WebCamera(prowidth, proheight);
 		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
-		thresh = _thresh;
 		kf.initKalmanfilter(6, 3, 0, 1);
 
 		//プロジェクタ画像読み込み,描画用画像作成
@@ -92,14 +91,14 @@ public:
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
+		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
 
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
-	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints,
+	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh,
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)

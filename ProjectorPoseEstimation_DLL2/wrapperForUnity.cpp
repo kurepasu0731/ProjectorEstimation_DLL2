@@ -1,8 +1,8 @@
 #include "wrapperForUnity.h"
 
-DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh)
+DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 {
-	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset, _thresh));	
+	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset));	
 }
 
 //パラメータファイル、3次元復元ファイル読み込み
@@ -32,7 +32,7 @@ DLLExport void callloadParam(void* projectorestimation, double initR[], double i
 //プロジェクタ位置推定コア呼び出し
 DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 																double _initR[], double _initT[], double _dstR[], double _dstT[],
-																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode)
+																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode)
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 
@@ -74,12 +74,12 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 		proj_drawing = flip_prj_img.clone();
 
-		result = pe->findProjectorPose_Corner(cam_img, flip_prj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, mode-3, cam_drawimg, proj_drawing);
+		result = pe->findProjectorPose_Corner(cam_img, flip_prj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode-3, cam_drawimg, proj_drawing);
 	}
 	//コーナー検出による推定(プロジェクタ画像更新しないver)
 	else
 	{	proj_drawing = pe->proj_img.clone();
-		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, mode, cam_drawimg, proj_drawing);
+		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, cam_drawimg, proj_drawing);
 	}
 
 	if(result)

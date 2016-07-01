@@ -37,7 +37,7 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
 bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode, 
+												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
 	//draw用(カメラ)
@@ -73,7 +73,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 		int result = 0;
 		if(mode == 1)
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
 		else if(mode == 2)
 			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
 			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
@@ -90,7 +90,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 }
 
 //計算部分
-int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints,
+int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh,
 																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
 {
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
@@ -287,33 +287,39 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			//対応点の平均再投影誤差
 			aveError /= projPoints_valid.size();
-			std::cout << "reprojection error ave : " << aveError << std::endl;
+			//std::cout << "reprojection error ave : " << aveError << std::endl;
 			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			double percent = (projPoints_valid.size() * 100) / projPoints.size();
 
-			std::string log = "aveError: " + std::to_string(aveError) + " --- valid points: " + std::to_string(percent) + "%";
-			debug_log(log);
+			std::string logAve = "aveError: ";
+			std::string logAve2 =std::to_string(aveError);
+			std::string logPer = "valid points: ";
+			std::string logPer2 = std::to_string(percent);
+			debug_log(logAve);
+			debug_log(logAve2);
+			debug_log(logPer);
+			debug_log(logPer2);
 
-			//閾値の更新
-			if(thresh > 10)
-			{
-				//単位はmm
-				if(aveError <= 20 && percent >= 95)//止まった判定
-				{
-					thresh = 10;
-				}
-			}
-			else
-			{
-				if(percent <= 70)//動きだし判定
-				{
-					if(aveError <= 10)	 thresh = 10;
-					else                       thresh = 50;
-				}
-			}
+			////閾値の更新
+			//if(thresh > 10)
+			//{
+			//	//単位はmm
+			//	if(aveError <= 20 && percent >= 80)//止まった判定
+			//	{
+			//		thresh = 10;
+			//	}
+			//}
+			//else
+			//{
+			//	if(aveError >= 5 && percent <= 30)//動きだし判定
+			//	{
+			//		thresh = 50;
+			//	}
+			//}
 
 			_dstR.copyTo(dstR);
 			_dstT.copyTo(dstT);
+			//_dstT_kf.copyTo(dstT);
 
 			std::cout << "info: " << info << std::endl;
 			return info;

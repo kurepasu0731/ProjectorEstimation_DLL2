@@ -10,7 +10,7 @@
 
 extern "C" {
 	//ProjectorEstimationインスタンス生成
-	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh); 
+	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset); 
 
 	//パラメータファイル、3次元復元ファイル読み込み
 	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);
@@ -18,7 +18,7 @@ extern "C" {
 	//プロジェクタ位置推定コア呼び出し
 	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 																	double initR[], double initT[], double dstR[], double dstT[],
-																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode);
+																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode);
 	//ウィンドウ破棄
 	DLLExport void destroyAllWindows()
 	{
