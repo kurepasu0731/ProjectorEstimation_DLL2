@@ -111,7 +111,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 //DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 //																double _initR[], double _initT[], double _dstR[], double _dstT[],
-//																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode)
+//																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode)
 //{
 //	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 //
@@ -153,12 +153,12 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 //
 //		proj_drawing = flip_prj_img.clone();
 //
-//		result = pe->findProjectorPose_Corner(cam_img, flip_prj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, mode-3, cam_drawimg, proj_drawing);
+//		result = pe->findProjectorPose_Corner(cam_img, flip_prj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode-3, cam_drawimg, proj_drawing);
 //	}
 //	//コーナー検出による推定(プロジェクタ画像更新しないver)
 //	else
 //	{	proj_drawing = pe->proj_img.clone();
-//		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, mode, cam_drawimg, proj_drawing);
+//		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, cam_drawimg, proj_drawing);
 //	}
 //
 //	if(result)

@@ -24,7 +24,7 @@ extern "C" {
 
 	//DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
 	//																double initR[], double initT[], double dstR[], double dstT[],
-	//																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode);
+	//																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode);
 
 	//ウィンドウ破棄
 	DLLExport void destroyAllWindows()
