@@ -61,6 +61,9 @@ public:
 	//カルマンフィルタ
 	Kalmanfilter kf;
 
+	//--フラグ関係--//
+	bool detect_proj; //プロジェクタ画像のコーナー点を検出したかどうか
+
 	//コンストラクタ
 	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 	{
@@ -78,7 +81,10 @@ public:
 		//チェッカパターンによる推定の場合
 		//プロジェクタ画像上の交点座標を求めておく
 		getProjectorImageCorners(projectorImageCorners, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset);
-		
+
+		//コーナー検出の場合
+		//TODO:プロジェクタ画像上のコーナー点を求めておく
+		detect_proj = false;
 	};
 
 	~ProjectorEstimation(){};
@@ -96,6 +102,9 @@ public:
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
 
+	//コーナー検出
+	bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
+
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
 	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh,
@@ -105,8 +114,8 @@ private:
 	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
-	//コーナー検出
-	bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
+	////コーナー検出
+	//bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
 
 	//各対応点の重心位置を計算
 	void calcAveragePoint(std::vector<cv::Point3f> imageWorldPoints, std::vector<cv::Point2f> projPoints, 

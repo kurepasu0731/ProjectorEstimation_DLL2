@@ -59,8 +59,17 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	}
 	//コーナー検出による推定(プロジェクタ画像更新しないver)
 	else
-	{	proj_drawing = pe->proj_img.clone();
-		result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, cam_drawimg, proj_drawing);
+	{
+		proj_drawing = pe->proj_img.clone();
+
+		//プロジェクタ画像上のコーナー検出(最初の一回のみ)
+		if(pe->detect_proj == false)
+			pe->detect_proj = pe->getCorners(pe->proj_img, pe->projcorners, projMinDist, projCornerNum, proj_drawing); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+
+		if(pe->detect_proj == true)
+			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, cam_drawimg, proj_drawing);
+		else
+			result = false;
 	}
 
 	if(result)
@@ -85,16 +94,20 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 	//コーナー検出結果表示
 	cv::Mat resize_cam, resize_proj;
-	//マスクをかける
-	for(int y = 0; y < cam_drawimg.rows; y++)
+
+	if(mode != 3)
 	{
-		for(int x = 0; x < cam_drawimg.cols; x++)
+		//マスクをかける
+		for(int y = 0; y < cam_drawimg.rows; y++)
 		{
-			if(pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 0] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 1] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 2] == 0)
+			for(int x = 0; x < cam_drawimg.cols; x++)
 			{
-					cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 0] = 0; 
-					cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 1] = 0; 
-					cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 2] = 0; 
+				if(pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 0] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 1] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 2] == 0)
+				{
+						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 0] = 0; 
+						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 1] = 0; 
+						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 2] = 0; 
+				}
 			}
 		}
 	}
