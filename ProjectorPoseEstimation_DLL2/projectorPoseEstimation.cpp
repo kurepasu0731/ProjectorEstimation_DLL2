@@ -239,15 +239,15 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//並進
 			//--予測なし--//
 			cv::Mat _dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
-			//--予測あり--//
-			cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
-			cv::Mat measurement(3, 1, CV_64F);
-			kf.fillMeasurements(measurement, translation_measured);
-			// Instantiate estimated translation and rotation
-			cv::Mat translation_estimated(3, 1, CV_64F);
-			// update the Kalman filter with good measurements
-			kf.updateKalmanfilter(measurement, translation_estimated);
-			cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
+			////--予測あり--//
+			//cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
+			//cv::Mat measurement(3, 1, CV_64F);
+			//kf.fillMeasurements(measurement, translation_measured);
+			//// Instantiate estimated translation and rotation
+			//cv::Mat translation_estimated(3, 1, CV_64F);
+			//// update the Kalman filter with good measurements
+			//kf.updateKalmanfilter(measurement, translation_estimated);
+			//cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
 
 
 			//対応点の投影誤差
@@ -257,10 +257,10 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 																			_dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT.at<double>(1,0),
 																			_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT.at<double>(2,0),
 																			0, 0, 0, 1);
-			cv::Mat Rt_kf = (cv::Mat_<double>(4, 4) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstT_kf.at<double>(0,0),
-																			_dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT_kf.at<double>(1,0),
-																			_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT_kf.at<double>(2,0),
-																			0, 0, 0, 1);
+			//cv::Mat Rt_kf = (cv::Mat_<double>(4, 4) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstT_kf.at<double>(0,0),
+			//																_dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT_kf.at<double>(1,0),
+			//																_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT_kf.at<double>(2,0),
+			//																0, 0, 0, 1);
 			for(int i = 0; i < reconstructPoints_order.size(); i++)
 			{
 				// 2次元(プロジェクタ画像)平面へ投影
@@ -269,13 +269,13 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				//--予測なし--//
 				cv::Mat dst_p = projK_34 * Rt * wp;
 				cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-				//--予測あり--//
-				cv::Mat dst_p_kf = projK_34 * Rt_kf * wp;
-				cv::Point2d pt_kf(dst_p_kf.at<double>(0,0) / dst_p_kf.at<double>(2,0), dst_p_kf.at<double>(1,0) / dst_p_kf.at<double>(2,0));
+				////--予測あり--//
+				//cv::Mat dst_p_kf = projK_34 * Rt_kf * wp;
+				//cv::Point2d pt_kf(dst_p_kf.at<double>(0,0) / dst_p_kf.at<double>(2,0), dst_p_kf.at<double>(1,0) / dst_p_kf.at<double>(2,0));
 				//描画(プロジェクタ画像)
 				cv::circle(chessimage, projPoints_valid[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
 				cv::circle(chessimage, pt, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
-				cv::circle(chessimage, pt_kf, 5, cv::Scalar(0, 255, 0), 3);//カメラ(予測あり)は緑
+				//cv::circle(chessimage, pt_kf, 5, cv::Scalar(0, 255, 0), 3);//カメラ(予測あり)は緑
 				//描画(カメラ画像)
 				cv::circle(draw_camimage, imagePoints_order[i], 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
 				//対応点の再投影誤差算出
@@ -289,14 +289,14 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			double percent = (projPoints_valid.size() * 100) / projPoints.size();
 
-			std::string logAve = "aveError: ";
-			std::string logAve2 =std::to_string(aveError);
-			std::string logPer = "valid points: ";
-			std::string logPer2 = std::to_string(percent);
-			debug_log(logAve);
-			debug_log(logAve2);
-			debug_log(logPer);
-			debug_log(logPer2);
+			//std::string logAve = "aveError: ";
+			//std::string logAve2 =std::to_string(aveError);
+			//std::string logPer = "valid points: ";
+			//std::string logPer2 = std::to_string(percent);
+			//debug_log(logAve);
+			//debug_log(logAve2);
+			//debug_log(logPer);
+			//debug_log(logPer2);
 
 			////閾値の更新
 			//if(thresh > 10)
