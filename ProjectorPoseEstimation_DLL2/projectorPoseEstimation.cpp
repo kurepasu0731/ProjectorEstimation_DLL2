@@ -172,6 +172,77 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 								flann::SearchParams() );
 		///////↑↑最近傍探索で対応を求める↑↑///////
 		
+		//---RANSAC---//
+		//対応する3次元点
+		std::vector<cv::Point3f> Points3D;
+		for(int i = 0; i < projPoints.size(); i++)
+			Points3D.emplace_back(reconstructPoints_valid[indices[i][0]]);
+
+		//inlierの割合
+		double percentage = 0.0;
+		//inlier対応点
+		std::vector<cv::Point3f> inlier_P;
+		std::vector<cv::Point2f> inlier_p;
+
+		while(percentage <= 99)
+		{
+			//クリア
+			inlier_P.clear();
+			inlier_p.clear();
+
+			//1. ランダムに3点選ぶ
+			std::vector<cv::Point3f> random_P;
+			std::vector<cv::Point2f> random_p;
+			get_random_points(3, projPoints, Points3D, random_p, random_P);
+
+			//2. 3点でパラメータを求める			
+			cv::Mat preR, preT;//仮パラメータ
+			int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
+
+			if(result > 0)
+			{
+				//3. 全点で再投影誤差を求める
+				vector<cv::Point2d> projection_P;
+				vector<double> errors;
+				calcReprojectionErrors(projPoints, Points3D, preR, preT, projection_P, errors);
+
+				//4. 再投影誤差が閾値以下だったものの割合が99％以下だったら、続行
+				int score = 0;
+				for(int i = 0; i < errors.size(); i++)
+				{
+					if(errors[i] <= 10.0)
+					{
+						inlier_p.emplace_back(projPoints[i]);
+						inlier_P.emplace_back(Points3D[i]);
+						score++;
+					}
+				}
+				percentage = score * 100 / projPoints.size();
+			}
+		}
+
+		//5. inlierで再度パラメータを求める
+		cv::Mat final_R, final_T;
+		int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T);
+
+		//対応点の様子を描画
+		vector<cv::Point2d> projection_P;
+		vector<double> errors;
+		double aveError = 0; //平均再投影
+		calcReprojectionErrors(inlier_p, inlier_P, final_R, final_T, projection_P, errors);
+		for(int i = 0; i < inlier_p.size(); i++)
+		{
+			cv::circle(chessimage, inlier_p[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
+			cv::circle(chessimage, projection_P[i], 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
+			aveError += errors[i];
+		}
+		aveError /= errors.size();
+
+		return result;
+
+		//--RANSACおわり---//
+
+#if 0
 		//ロバスト推定
 		//対応点の重み
 		//std::vector<double> weight;
@@ -323,6 +394,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			return info;
 		}
 		else return 0;
+#endif
 }
 
 
@@ -794,6 +866,95 @@ bool ProjectorEstimation::transformRotMatToQuaternion(
 }
 
 
+//ランダムにnum点を抽出
+void ProjectorEstimation::get_random_points(int num, vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, vector<cv::Point2f>& calib_p, vector<cv::Point3f>& calib_P){
+	int i=0;
+	//初期化
+	calib_p.clear();
+	calib_P.clear();
+
+	//srand(time(NULL));    /* 乱数の初期化 */ 
+	std::random_device rnd;//rand() < 32767 std::random_device < 0xffffffff=4294967295
+	cv::Vector<int> exists;
+	while(i <= num){
+		int maxValue = (int)src_p.size();
+		//int v = rand() % maxValue;
+		int v = rnd() % maxValue;
+		bool e2=false;
+		for(int s=0; s<i; s++){
+			if(exists[s] == v) e2 = true; 
+		}
+		if(!e2){
+			exists.push_back(v);
+			calib_P.push_back(src_P[v]);
+			calib_p.push_back(src_p[v]);
+			i++;
+		}
+	}
+}
+
+//対応点からRとTの算出
+int ProjectorEstimation::calcParameters(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT){
+	//回転行列からクォータニオンにする
+	cv::Mat initialR_tr = initialR.t();//関数の都合上転置
+	double w, x, y, z;
+	transformRotMatToQuaternion(x, y, z, w, initialR_tr.at<double>(0, 0), initialR_tr.at<double>(0, 1), initialR_tr.at<double>(0, 2), 
+																initialR_tr.at<double>(1, 0), initialR_tr.at<double>(1, 1), initialR_tr.at<double>(1, 2), 
+																initialR_tr.at<double>(2, 0), initialR_tr.at<double>(2, 1), initialR_tr.at<double>(2, 2)); 		
+		
+	int n = 6; //変数の数
+	int info;
+
+	VectorXd initial(n);
+	initial << x, y, z, initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0);
+
+	misra1a_functor functor(n, src_p.size(), src_p, src_P, projK_34);
+    
+	NumericalDiff<misra1a_functor> numDiff(functor);
+	LevenbergMarquardt<NumericalDiff<misra1a_functor> > lm(numDiff);
+
+	//最適化
+	info = lm.minimize(initial);
+    
+	//出力
+	//回転
+	Quaterniond q(0, initial[0], initial[1], initial[2]);
+	q.w () = static_cast<double> (sqrt (1 - q.dot (q)));
+	q.normalize ();
+	MatrixXd qMat = q.toRotationMatrix();
+	cv::Mat _dstR = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
+	//並進
+	//--予測なし--//
+	cv::Mat _dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
+
+	_dstR.copyTo(dstR);
+	_dstT.copyTo(dstT);
+
+	return info;
+}
+
+//3次元点のプロジェクタ画像への射影と再投影誤差の計算
+void ProjectorEstimation::calcReprojectionErrors(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat R, cv::Mat T, vector<cv::Point2d>& projection_P, vector<double>& errors){
+	//対応点の様子を描画
+	cv::Mat Rt = (cv::Mat_<double>(4, 4) << R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0,0),
+																	R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1,0),
+																	R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2,0),
+																	0, 0, 0, 1);
+	for(int i = 0; i < src_P.size(); i++)
+	{
+		// 2次元(プロジェクタ画像)平面へ投影
+		cv::Mat wp = (cv::Mat_<double>(4, 1) << src_P[i].x, src_P[i].y, src_P[i].z, 1);
+		//4*4行列にする
+		//--予測なし--//
+		cv::Mat dst_p = projK_34 * Rt * wp;
+		cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
+		//対応点の再投影誤差算出
+		double reprojectError = sqrt(pow(pt.x - src_p[i].x, 2) + pow(pt.y - src_p[i].y, 2));
+
+		projection_P.emplace_back(pt);
+		errors.emplace_back(reprojectError);
+	}
+}
 
 //******外部にさらす用********//
 /*
@@ -947,3 +1108,5 @@ DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_da
 	cv::imwrite("CameraMask.png", pe->CameraMask);
 }
 */
+
+

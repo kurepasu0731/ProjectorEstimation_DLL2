@@ -8,6 +8,8 @@
 #include "KalmanFilter.h"
 
 #include <opencv2/opencv.hpp>
+#include <random>
+
 
 //PCL
 //#include <pcl/io/pcd_io.h>
@@ -139,7 +141,14 @@ private:
 		double m21, double m22, double m23,
 		double m31, double m32, double m33);
 
+	//ランダムにnum点を抽出
+	void get_random_points(int num, vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, vector<cv::Point2f>& calib_p, vector<cv::Point3f>& calib_P);
 
+	//対応点からRとTの算出
+	int calcParameters(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT);
+
+	//3次元点のプロジェクタ画像への射影と再投影誤差の計算
+	void calcReprojectionErrors(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat R, cv::Mat T, vector<cv::Point2d>& projection_P, vector<double>& errors);
 };
 
 /*
