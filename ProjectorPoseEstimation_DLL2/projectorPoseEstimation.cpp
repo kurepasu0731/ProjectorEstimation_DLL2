@@ -93,6 +93,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh,
 																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
 {
+
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
 		std::vector<cv::Point3f> reconstructPoints_valid;
 		//対応付けられてるカメラ画像点
@@ -113,15 +114,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				}
 			}
 		}
-
-		//重心
-		//misra2a_functor functor(n, projPoints.size(), projPoints, reconstructPoints_valid, projector.cam_K);
-		//NumericalDiff<misra2a_functor> numDiff(functor);
-		//LevenbergMarquardt<NumericalDiff<misra2a_functor> > lm(numDiff);
-		////最近傍 
-		//misra3a_functor functor(n, projPoints.size(), projPoints, reconstructPoints_valid, projector.cam_K);
-		//NumericalDiff<misra3a_functor> numDiff(functor);
-		//LevenbergMarquardt<NumericalDiff<misra3a_functor> > lm(numDiff);
 
 		///////↓↓最近傍探索で対応を求める↓↓///////
 
@@ -171,7 +163,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 								1, // k of knn
 								flann::SearchParams() );
 		///////↑↑最近傍探索で対応を求める↑↑///////
-		
+
+#if 0
 		//---RANSAC---//
 		//対応する3次元点
 		std::vector<cv::Point3f> Points3D;
@@ -179,25 +172,33 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			Points3D.emplace_back(reconstructPoints_valid[indices[i][0]]);
 
 		//inlierの割合
-		double percentage = 0.0;
+		double maxpercentage = 0.0;
+		//最大スコア
+		int maxscore = 0;
 		//inlier対応点
 		std::vector<cv::Point3f> inlier_P;
 		std::vector<cv::Point2f> inlier_p;
 
-		while(percentage <= 99)
-		{
-			//クリア
-			inlier_P.clear();
-			inlier_p.clear();
+		//繰り返し回数
+		int iterate = 0;
 
-			//1. ランダムに3点選ぶ
+		//for(int i = 0; i < 10; i++)
+		while(iterate <= 10)
+		{
+			////クリア
+			//inlier_P.clear();
+			//inlier_p.clear();
+
+			//1. ランダムに6点選ぶ
 			std::vector<cv::Point3f> random_P;
 			std::vector<cv::Point2f> random_p;
-			get_random_points(3, projPoints, Points3D, random_p, random_P);
+			get_random_points(20, projPoints, Points3D, random_p, random_P);
 
-			//2. 3点でパラメータを求める			
+			//2. 6点でパラメータを求める			
 			cv::Mat preR, preT;//仮パラメータ
 			int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
+
+			debug_log(std::to_string(result));
 
 			if(result > 0)
 			{
@@ -210,14 +211,34 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				int score = 0;
 				for(int i = 0; i < errors.size(); i++)
 				{
-					if(errors[i] <= 10.0)
+					if(errors[i] <= thresh)
 					{
-						inlier_p.emplace_back(projPoints[i]);
-						inlier_P.emplace_back(Points3D[i]);
 						score++;
 					}
 				}
-				percentage = score * 100 / projPoints.size();
+
+				if(score >= maxscore)
+				{
+					//クリア
+					inlier_P.clear();
+					inlier_p.clear();
+
+					for(int i = 0; i < errors.size(); i++)
+					{
+						if(errors[i] <= thresh)
+						{
+							inlier_p.emplace_back(projPoints[i]);
+							inlier_P.emplace_back(Points3D[i]);
+						}
+					}
+					maxpercentage = score * 100 / projPoints.size();
+					maxscore = score;
+				}
+
+				if(maxpercentage >= 90) break;
+
+				iterate++;
+
 			}
 		}
 
@@ -238,11 +259,25 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		}
 		aveError /= errors.size();
 
+		std::string logAve = "aveError: ";
+		std::string logAve2 =std::to_string(aveError);
+		debug_log(logAve);
+		debug_log(logAve2);
+		std::string logPer = "valid points: ";
+		std::string logPer2 = std::to_string(maxpercentage);
+		debug_log(logPer);
+		debug_log(logPer2);
+
+		final_R.copyTo(dstR);
+		final_T.copyTo(dstT);
+
 		return result;
 
 		//--RANSACおわり---//
+#endif
 
-#if 0
+
+#if 1//きれいに書き直したver(5msくらい遅い)
 		//ロバスト推定
 		//対応点の重み
 		//std::vector<double> weight;
@@ -277,8 +312,48 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//}
 		}
 
+
+
 		if(reconstructPoints_order.size() > 0)
 		{
+
+			//パラメータを求める			
+			cv::Mat _dstR, _dstT;
+			int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
+
+			//対応点の様子を描画
+			vector<cv::Point2d> projection_P;
+			vector<double> errors;
+			double aveError = 0; //平均再投影
+			calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT, projection_P, errors);
+
+			for(int i = 0; i < projPoints_valid.size(); i++)
+			{
+				cv::circle(chessimage, projPoints_valid[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
+				cv::circle(chessimage, projection_P[i], 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
+				//描画(カメラ画像)
+				cv::circle(draw_camimage, imagePoints_order[i], 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
+				aveError += errors[i];
+			}
+			aveError /= errors.size();
+			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
+			double percent = (projPoints_valid.size() * 100) / projPoints.size();
+
+			_dstR.copyTo(dstR);
+			_dstT.copyTo(dstT);
+
+			//std::string logAve = "aveError: ";
+			//std::string logAve2 =std::to_string(aveError);
+			//std::string logPer = "valid points: ";
+			//std::string logPer2 = std::to_string(percent);
+			//debug_log(logAve);
+			//debug_log(logAve2);
+			//debug_log(logPer);
+			//debug_log(logPer2);
+
+			return result;
+
+#if 0//べた書きver(5ms速い)
 			//回転行列からクォータニオンにする
 			cv::Mat initialR_tr = initialR.t();//関数の都合上転置
 			double w, x, y, z;
@@ -392,6 +467,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			std::cout << "info: " << info << std::endl;
 			return info;
+#endif
 		}
 		else return 0;
 #endif
@@ -876,10 +952,10 @@ void ProjectorEstimation::get_random_points(int num, vector<cv::Point2f> src_p, 
 	//srand(time(NULL));    /* 乱数の初期化 */ 
 	std::random_device rnd;//rand() < 32767 std::random_device < 0xffffffff=4294967295
 	cv::Vector<int> exists;
-	while(i <= num){
+	while(i < num){
 		int maxValue = (int)src_p.size();
-		//int v = rand() % maxValue;
-		int v = rnd() % maxValue;
+		int v = rand() % maxValue;
+		//int v = rnd() % maxValue;
 		bool e2=false;
 		for(int s=0; s<i; s++){
 			if(exists[s] == v) e2 = true; 
