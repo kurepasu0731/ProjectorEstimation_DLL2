@@ -278,9 +278,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 
 #if 1//きれいに書き直したver(5msくらい遅い)
-		//ロバスト推定
-		//対応点の重み
-		//std::vector<double> weight;
 
 		//対応順に3次元点を整列する
 		std::vector<cv::Point3f> reconstructPoints_order;
@@ -298,20 +295,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
 				imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
 				projPoints_valid.emplace_back(projPoints[i]);
-
-				//double w = pow((1 - pow((distance / thresh), 2)), 2);
-				//weight.emplace_back(w);
 			}
-			//else
-			//{
-			//	reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
-			//	imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
-			//	//projPoints_valid.emplace_back(projPoints[i]);
-			//	//thresh外は重み0
-			//	weight.emplace_back(0.0);
-			//}
 		}
-
 
 
 		if(reconstructPoints_order.size() > 0)
@@ -658,6 +643,9 @@ bool ProjectorEstimation::getCorners(cv::Mat frame, std::vector<cv::Point2f> &co
 	//コーナー検出
 	//int num = 500;
 	cv::goodFeaturesToTrack(gray_img, corners, num, 0.01, minDistance);
+
+	//高精度化
+	cv::cornerSubPix(frame, corners, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
 
 	//描画
 	for(int i = 0; i < corners.size(); i++)
