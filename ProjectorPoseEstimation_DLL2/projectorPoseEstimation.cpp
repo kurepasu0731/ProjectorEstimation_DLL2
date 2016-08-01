@@ -43,10 +43,18 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 	//draw用(カメラ)
 	draw_camimage = camframe.clone();
 
+	cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+
 	//カメラ画像上のコーナー検出
 	bool detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
 	//プロジェクタ画像上のコーナー検出
 	//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+
+	cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+	cTimeSpan = cTimeEnd - cTimeStart;
+	std::string log0 = "corner detect:";
+	debug_log(log0);
+	debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 	//コーナー検出できたら、位置推定開始
 	if(detect_cam && detect_proj)
@@ -94,6 +102,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
 {
 
+		cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
 		std::vector<cv::Point3f> reconstructPoints_valid;
 		//対応付けられてるカメラ画像点
@@ -113,7 +123,28 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 					imagePoints_valid.emplace_back(imagePoints[i]);
 				}
 			}
+			else
+			{
+				//カメラ画像に描画
+				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
+
+			}
 		}
+
+		std::string deg = "imagePoints:";
+		debug_log(deg);
+		debug_log(std::to_string(imagePoints.size()));
+		std::string deg1 = "projPoints:";
+		debug_log(deg1);
+		debug_log(std::to_string(projPoints.size()));
+
+		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		cTimeSpan = cTimeEnd - cTimeStart;
+		std::string log01 = "01:";
+		debug_log(log01);
+		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+
+		cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 		///////↓↓最近傍探索で対応を求める↓↓///////
 
@@ -163,6 +194,12 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 								1, // k of knn
 								flann::SearchParams() );
 		///////↑↑最近傍探索で対応を求める↑↑///////
+
+		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		cTimeSpan = cTimeEnd - cTimeStart;
+		std::string log1 = "k-means:";
+		debug_log(log1);
+		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 #if 0
 		//---RANSAC---//
@@ -279,6 +316,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 #if 1//きれいに書き直したver(5msくらい遅い)
 
+		cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+
 		//対応順に3次元点を整列する
 		std::vector<cv::Point3f> reconstructPoints_order;
 		//対応付けられてるカメラ画像点も整列
@@ -298,13 +337,42 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			}
 		}
 
+		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		cTimeSpan = cTimeEnd - cTimeStart;
+		std::string log2 = "02:";
+		debug_log(log2);
+		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 		if(reconstructPoints_order.size() > 0)
 		{
 
+			cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+
 			//パラメータを求める			
 			cv::Mat _dstR, _dstT;
 			int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
+
+			cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+			cTimeSpan = cTimeEnd - cTimeStart;
+			std::string log2 = "calclate:";
+			debug_log(log2);
+			debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+
+			cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+
+			//マスクをかける
+			for(int y = 0; y < draw_camimage.rows; y++)
+			{
+				for(int x = 0; x < draw_camimage.cols; x++)
+				{
+					if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
+					{
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
+					}
+				}
+			}
 
 			//対応点の様子を描画
 			vector<cv::Point2d> projection_P;
@@ -312,14 +380,50 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			double aveError = 0; //平均再投影
 			calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT, projection_P, errors);
 
+
+			//はじかれた対応点も全部描画
+			for(int i = 0; i < projPoints.size(); i++)
+			{	
+				cv::Point pp = cv::Point((int) (projPoints[i].x + 0.5f), (int) (projPoints[i].y + 0.5f));
+				cv::Point cp = cv::Point((int) (ppt[indices[i][0]].x + 0.5f), (int) (ppt[indices[i][0]].y + 0.5f));
+
+				//プロジェクタ画像のコーナー点を描画(対応ついてないのも全部)
+				cv::circle(chessimage, pp, 1, cv::Scalar(0, 0, 255), 3); //小さめの赤
+				cv::putText(chessimage,std::to_string(i), pp, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0,0,255));
+
+				//カメラ画像のコーナー点をプロジェクタ画像へ射影したものの描画(対応ついてないのも全部)
+				//描画(プロジェクタ画像)
+				cv::circle(chessimage, cp, 1, cv::Scalar(255, 0, 0), 3); //小さめの青
+				cv::putText(chessimage,std::to_string(i), cp, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255,0,0));
+
+				//線で結ぶ
+				cv::line(chessimage, pp, cp, cv::Scalar(0, 255, 0), 2);//緑
+			}
+			//有効な対応点の描画
 			for(int i = 0; i < projPoints_valid.size(); i++)
 			{
-				cv::circle(chessimage, projPoints_valid[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
-				cv::circle(chessimage, projection_P[i], 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
+				cv::Point pp = cv::Point((int) (projPoints_valid[i].x + 0.5f), (int) (projPoints_valid[i].y + 0.5f));
+				cv::Point cp = cv::Point((int) (projection_P[i].x + 0.5f), (int) (projection_P[i].y + 0.5f));
+				cv::Point icp = cv::Point((int) (imagePoints_order[i].x + 0.5f), (int) (imagePoints_order[i].y + 0.5f));
+
+				//描画(プロジェクタ画像)
+				cv::circle(chessimage,pp, 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
+				cv::circle(chessimage, cp, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
 				//描画(カメラ画像)
-				cv::circle(draw_camimage, imagePoints_order[i], 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
+				cv::circle(draw_camimage, icp, 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
+
+				//線で結ぶ
+				cv::line(chessimage, pp, cp, cv::Scalar(255, 0, 255), 4);//ピンク(太)
+
 				aveError += errors[i];
 			}
+
+			cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+			cTimeSpan = cTimeEnd - cTimeStart;
+			std::string log3 = "draw:";
+			debug_log(log3);
+			debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+
 			aveError /= errors.size();
 			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			double percent = (projPoints_valid.size() * 100) / projPoints.size();
@@ -645,7 +749,7 @@ bool ProjectorEstimation::getCorners(cv::Mat frame, std::vector<cv::Point2f> &co
 	cv::goodFeaturesToTrack(gray_img, corners, num, 0.01, minDistance);
 
 	//高精度化
-	cv::cornerSubPix(frame, corners, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
+	cv::cornerSubPix(gray_img, corners, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
 
 	//描画
 	for(int i = 0; i < corners.size(); i++)

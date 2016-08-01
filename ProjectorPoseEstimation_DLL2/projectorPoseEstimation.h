@@ -10,7 +10,6 @@
 #include <opencv2/opencv.hpp>
 #include <random>
 
-
 //PCL
 //#include <pcl/io/pcd_io.h>
 //#include <pcl/point_types.h>
@@ -18,6 +17,8 @@
 
 #include <flann/flann.hpp>
 #include <boost/shared_array.hpp>
+
+#include <atltime.h>
 
 
 //#define DLLExport __declspec (dllexport)
@@ -62,6 +63,10 @@ public:
 
 	//カルマンフィルタ
 	Kalmanfilter kf;
+
+	//処理時間計測
+	CFileTime cTimeStart, cTimeEnd;
+	CFileTimeSpan cTimeSpan;
 
 	//--フラグ関係--//
 	bool detect_proj; //プロジェクタ画像のコーナー点を検出したかどうか

@@ -95,27 +95,10 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 	//コーナー検出結果表示
 	cv::Mat resize_cam, resize_proj;
-
-	if(mode != 3)
-	{
-		//マスクをかける
-		for(int y = 0; y < cam_drawimg.rows; y++)
-		{
-			for(int x = 0; x < cam_drawimg.cols; x++)
-			{
-				if(pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 0] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 1] == 0 && pe->CameraMask.data[(y * cam_drawimg.cols + x) * 3 + 2] == 0)
-				{
-						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 0] = 0; 
-						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 1] = 0; 
-						cam_drawimg.data[(y * cam_drawimg.cols + x) * 3 + 2] = 0; 
-				}
-			}
-		}
-	}
-	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.5, 0.5);
+	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.8, 0.8);
 
 	cv::imshow("Camera detected corners", resize_cam);
-	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.5, 0.5);
+	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.8, 0.8);
 	cv::imshow("Projector detected corners", resize_proj);
 
 	return result;
