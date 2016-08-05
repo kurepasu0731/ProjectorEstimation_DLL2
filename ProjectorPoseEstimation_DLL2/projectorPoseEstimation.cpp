@@ -114,7 +114,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			int image_y = (int)(imagePoints[i].y+0.5);
 			int index = image_y * camera->width + image_x;
 			//-1はプロジェクタ投影領域外エリアを意味する
-			if(0 <= image_x && image_x < camera->width && 0 <= image_y && image_y < camera->height && reconstructPoints[index].x != -1)
+			if(0 <= image_x && image_x < camera->width && 0 <= image_y && image_y < camera->height &&
+				reconstructPoints[index].x != -1.0f && reconstructPoints[index].y != -1.0f && reconstructPoints[index].z != -1.0f)
 			{
 				//マスク領域(ドラえもん部分)のコーナー点は除外
 				if(CameraMask.data[index * 3 + 0] != 0 && CameraMask.data[index * 3 + 1] != 0 && CameraMask.data[index * 3 + 2] != 0 )
@@ -127,7 +128,15 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				//カメラ画像に描画
 				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
-
+				std::string stx = "x: ";
+				debug_log(stx);
+				debug_log(std::to_string(reconstructPoints[i].x));
+				std::string sty = "y: ";
+				debug_log(sty);
+				debug_log(std::to_string(reconstructPoints[i].y));
+				std::string stz = "z: ";
+				debug_log(stz);
+				debug_log(std::to_string(reconstructPoints[i].z));
 			}
 		}
 
