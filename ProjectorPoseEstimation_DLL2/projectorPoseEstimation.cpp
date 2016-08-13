@@ -43,18 +43,18 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 	//draw用(カメラ)
 	draw_camimage = camframe.clone();
 
-	cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+	//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 	//カメラ画像上のコーナー検出
 	bool detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
 	//プロジェクタ画像上のコーナー検出
 	//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
 
-	cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-	cTimeSpan = cTimeEnd - cTimeStart;
-	std::string log0 = "corner detect:";
-	debug_log(log0);
-	debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+//	cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+//	cTimeSpan = cTimeEnd - cTimeStart;
+//	std::string log0 = "corner detect:";
+//	debug_log(log0);
+//	debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 	//コーナー検出できたら、位置推定開始
 	if(detect_cam && detect_proj)
@@ -128,32 +128,32 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				//カメラ画像に描画
 				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
-				std::string stx = "x: ";
-				debug_log(stx);
-				debug_log(std::to_string(reconstructPoints[i].x));
-				std::string sty = "y: ";
-				debug_log(sty);
-				debug_log(std::to_string(reconstructPoints[i].y));
-				std::string stz = "z: ";
-				debug_log(stz);
-				debug_log(std::to_string(reconstructPoints[i].z));
+				//std::string stx = "x: ";
+				//debug_log(stx);
+				//debug_log(std::to_string(reconstructPoints[i].x));
+				//std::string sty = "y: ";
+				//debug_log(sty);
+				//debug_log(std::to_string(reconstructPoints[i].y));
+				//std::string stz = "z: ";
+				//debug_log(stz);
+				//debug_log(std::to_string(reconstructPoints[i].z));
 			}
 		}
 
-		std::string deg = "imagePoints:";
-		debug_log(deg);
-		debug_log(std::to_string(imagePoints.size()));
-		std::string deg1 = "projPoints:";
-		debug_log(deg1);
-		debug_log(std::to_string(projPoints.size()));
+		//std::string deg = "imagePoints:";
+		//debug_log(deg);
+		//debug_log(std::to_string(imagePoints.size()));
+		//std::string deg1 = "projPoints:";
+		//debug_log(deg1);
+		//debug_log(std::to_string(projPoints.size()));
 
-		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-		cTimeSpan = cTimeEnd - cTimeStart;
-		std::string log01 = "01:";
-		debug_log(log01);
-		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+		//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeSpan = cTimeEnd - cTimeStart;
+		//std::string log01 = "01:";
+		//debug_log(log01);
+		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
-		cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 		///////↓↓最近傍探索で対応を求める↓↓///////
 
@@ -204,11 +204,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 								flann::SearchParams() );
 		///////↑↑最近傍探索で対応を求める↑↑///////
 
-		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-		cTimeSpan = cTimeEnd - cTimeStart;
-		std::string log1 = "k-means:";
-		debug_log(log1);
-		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+		//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeSpan = cTimeEnd - cTimeStart;
+		//std::string log1 = "k-means:";
+		//debug_log(log1);
+		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 #if 0
 		//---RANSAC---//
@@ -325,7 +325,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 #if 1//きれいに書き直したver(5msくらい遅い)
 
-		cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 		//対応順に3次元点を整列する
 		std::vector<cv::Point3f> reconstructPoints_order;
@@ -346,28 +346,28 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			}
 		}
 
-		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-		cTimeSpan = cTimeEnd - cTimeStart;
-		std::string log2 = "02:";
-		debug_log(log2);
-		debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+		//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeSpan = cTimeEnd - cTimeStart;
+		//std::string log2 = "02:";
+		//debug_log(log2);
+		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 		if(reconstructPoints_order.size() > 0)
 		{
 
-			cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+			//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 			//パラメータを求める			
 			cv::Mat _dstR, _dstT;
 			int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
 
-			cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-			cTimeSpan = cTimeEnd - cTimeStart;
-			std::string log2 = "calclate:";
-			debug_log(log2);
-			debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+			//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+			//cTimeSpan = cTimeEnd - cTimeStart;
+			//std::string log2 = "calclate:";
+			//debug_log(log2);
+			//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
-			cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
+			//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 			//マスクをかける
 			for(int y = 0; y < draw_camimage.rows; y++)
@@ -427,11 +427,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				aveError += errors[i];
 			}
 
-			cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-			cTimeSpan = cTimeEnd - cTimeStart;
-			std::string log3 = "draw:";
-			debug_log(log3);
-			debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+			//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
+			//cTimeSpan = cTimeEnd - cTimeStart;
+			//std::string log3 = "draw:";
+			//debug_log(log3);
+			//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
 			aveError /= errors.size();
 			//プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
