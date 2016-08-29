@@ -58,11 +58,11 @@ public:
 	//カメラ画像(歪みなし)のマスク
 	cv::Mat CameraMask;
 
-	//対応点とするかどうかの閾値
-	//double thresh;
-
 	//カルマンフィルタ
 	Kalmanfilter kf;
+
+	//1フレーム前の対応点間距離
+	std::vector<double> preDists;
 
 	//処理時間計測
 	CFileTime cTimeStart, cTimeEnd;
@@ -88,6 +88,10 @@ public:
 		//チェッカパターンによる推定の場合
 		//プロジェクタ画像上の交点座標を求めておく
 		getProjectorImageCorners(projectorImageCorners, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset);
+
+		//1フレーム前の対応点間距離の初期化
+		for(int i = 0; i < projectorImageCorners.size(); i++)
+			preDists.emplace_back(0.0);
 
 		//コーナー検出の場合
 		//TODO:プロジェクタ画像上のコーナー点を求めておく
