@@ -390,9 +390,12 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
-			//パラメータを求める			
+			//パラメータを求める(全点で)			
 			cv::Mat _dstR, _dstT;
 			int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
+			//パラメータを求める(RANSAC)
+			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 10, thresh, _dstR, _dstT);
+			
 
 			//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
 			//cTimeSpan = cTimeEnd - cTimeStart;
@@ -1177,6 +1180,106 @@ void ProjectorEstimation::calcReprojectionErrors(vector<cv::Point2f> src_p, vect
 	}
 }
 
+//対応点からRとTの算出(RANSAC)
+int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT,int num, float thresh, cv::Mat& dstR, cv::Mat& dstT)
+{
+		//inlierの割合
+		double maxpercentage = 0.0;
+		//最大スコア
+		int maxscore = 0;
+		//inlier対応点
+		std::vector<cv::Point3f> inlier_P;
+		std::vector<cv::Point2f> inlier_p;
+
+		//繰り返し回数
+		int iterate = 0;
+
+		//ランダムに選んでくる点
+		std::vector<cv::Point3f> random_P;
+		std::vector<cv::Point2f> random_p;
+
+		//再投影誤差
+		vector<cv::Point2d> projection_P;
+		vector<double> errors;
+
+		while(iterate < 10)
+		{
+			//クリア
+			random_P.clear();
+			random_p.clear();
+
+			//1. ランダムにnum点選ぶ
+			get_random_points(num, src_p, src_P, random_p, random_P);
+
+			//2. num点でパラメータを求める			
+			cv::Mat preR, preT;//仮パラメータ
+			int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
+
+			if(result > 0)
+			{
+				projection_P.clear();
+				errors.clear();
+
+				//3. 全点で再投影誤差を求める
+				calcReprojectionErrors(src_p, src_P, preR, preT, projection_P, errors);
+
+				//4. 再投影誤差が閾値以下だったものの割合が99％以下だったら、続行
+				int score = 0;
+				for(int i = 0; i < errors.size(); i++)
+				{
+					if(errors[i] <= thresh)
+					{
+						score++;
+					}
+				}
+
+				if(score >= maxscore)
+				{
+					//クリア
+					inlier_P.clear();
+					inlier_p.clear();
+
+					for(int i = 0; i < errors.size(); i++)
+					{
+						if(errors[i] <= thresh)
+						{
+							inlier_p.emplace_back(src_p[i]);
+							inlier_P.emplace_back(src_P[i]);
+						}
+					}
+					maxpercentage = score * 100 / src_p.size();
+					maxscore = score;
+				}
+
+				if(maxpercentage >= 90) break;
+
+				iterate++;
+
+			}
+		}
+
+		//5. inlierで再度パラメータを求める
+		cv::Mat final_R, final_T;
+		int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T);
+
+		//対応点の様子を描画
+		projection_P.clear();
+		errors.clear();
+		double aveError = 0; //平均再投影
+
+		calcReprojectionErrors(inlier_p, inlier_P, final_R, final_T, projection_P, errors);
+
+		for(int i = 0; i < inlier_p.size(); i++)
+		{
+			aveError += errors[i];
+		}
+		aveError /= errors.size();
+
+		final_R.copyTo(dstR);
+		final_T.copyTo(dstT);
+
+		return result;
+}
 //******外部にさらす用********//
 /*
 DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh)

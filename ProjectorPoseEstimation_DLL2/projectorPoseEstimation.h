@@ -158,6 +158,10 @@ private:
 
 	//3次元点のプロジェクタ画像への射影と再投影誤差の計算
 	void calcReprojectionErrors(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat R, cv::Mat T, vector<cv::Point2d>& projection_P, vector<double>& errors);
+
+	//対応点からRとTの算出(RANSAC)
+	int calcParameters_RANSAC(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, int num, float thresh, cv::Mat& dstR, cv::Mat& dstT)
+
 };
 
 /*
