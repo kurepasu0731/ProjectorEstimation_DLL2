@@ -348,7 +348,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		for(int i = 0; i < projPoints.size(); i++){
 			//double distance = dists[i][0];
 			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
-			if( distance <= thresh || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば
+			if( distance <= thresh+10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば
 			//if( distance <= thresh)
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
@@ -384,7 +384,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			cv::line(chessimage, pp, cp, cv::Scalar(0, 255, 0), 2);//緑
 		}
 #endif
-		if(reconstructPoints_order.size() > 10) //10点以上残れば(最低6点?)
+		if(reconstructPoints_order.size() > 20) //10点以上残れば(最低6点?)
 		{
 #if 1//きれいに書き直したver(5msくらい遅い)
 
@@ -392,9 +392,9 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			//パラメータを求める(全点で)			
 			cv::Mat _dstR, _dstT;
-			int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
+			//int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
 			//パラメータを求める(RANSAC)
-			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 10, thresh, _dstR, _dstT);
+			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 20, thresh, _dstR, _dstT);
 			
 
 			//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
@@ -1214,6 +1214,8 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 			//2. num点でパラメータを求める			
 			cv::Mat preR, preT;//仮パラメータ
 			int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
+
+			//debug_log(std::to_string(result));
 
 			if(result > 0)
 			{
