@@ -9,9 +9,9 @@ void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInpu
 
 	KF.init(nStates, nMeasurements, nInputs, CV_64F); //init KalmanFilter
 
-	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-3));       // set process noise
-	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-3));   // set measurement noise
-	cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // error covariance
+	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-3));        // プロセスノイズ（時間遷移に関するノイズ）の共分散行列 (Q)
+	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-3));   // 観測ノイズの共分散行列 (R)
+	cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // 今の時刻の誤差行列 (P'(k))
 
 					/* DYNAMIC MODEL */
 	//  [1 0 0 dt  0  0 dt2   0   0 0 0 0  0  0  0   0   0   0]
