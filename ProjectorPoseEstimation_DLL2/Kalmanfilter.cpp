@@ -9,8 +9,8 @@ void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInpu
 
 	KF.init(nStates, nMeasurements, nInputs, CV_64F); //init KalmanFilter
 
-	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-5));       // set process noise
-	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-4));   // set measurement noise
+	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-3));       // set process noise
+	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-3));   // set measurement noise
 	cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // error covariance
 
 					/* DYNAMIC MODEL */

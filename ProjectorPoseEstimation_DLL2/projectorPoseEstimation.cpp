@@ -348,7 +348,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		for(int i = 0; i < projPoints.size(); i++){
 			//double distance = dists[i][0];
 			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
-			if( distance <= thresh+10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば
+			if( distance <= thresh+10|| preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば
 			//if( distance <= thresh)
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
@@ -395,6 +395,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
 			//パラメータを求める(RANSAC)
 			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 20, thresh, _dstR, _dstT);
+
+
 			
 
 			//cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
@@ -403,15 +405,16 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//debug_log(log2);
 			//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
-			////--予測あり--//
-			//cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << dstT.at<double>(0,0), dstT.at<double>(1,0), dstT.at<double>(2,0));
-			//cv::Mat measurement(3, 1, CV_64F);
-			//kf.fillMeasurements(measurement, translation_measured);
-			//// Instantiate estimated translation and rotation
-			//cv::Mat translation_estimated(3, 1, CV_64F);
-			//// update the Kalman filter with good measurements
-			//kf.updateKalmanfilter(measurement, translation_estimated);
-			//cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
+			//--予測あり--//
+			cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
+			cv::Mat measurement(3, 1, CV_64F);
+			kf.fillMeasurements(measurement, translation_measured);
+			// Instantiate estimated translation and rotation
+			cv::Mat translation_estimated(3, 1, CV_64F);
+			// update the Kalman filter with good measurements
+			kf.updateKalmanfilter(measurement, translation_estimated);
+			cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
+			_dstT_kf.copyTo(_dstT);
 
 			//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
@@ -446,7 +449,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 				//描画(プロジェクタ画像)
 				cv::circle(chessimage,pp, 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
-				cv::circle(chessimage, cp, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測なし)は青
+				cv::circle(chessimage, cp, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測あり)は青
 				//描画(カメラ画像)
 				cv::circle(draw_camimage, icp, 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
 
