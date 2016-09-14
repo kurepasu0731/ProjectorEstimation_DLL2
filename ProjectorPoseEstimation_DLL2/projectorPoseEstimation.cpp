@@ -37,7 +37,7 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
 bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode,
+												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, bool isKalman,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
 	//draw用(カメラ)
@@ -81,7 +81,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 		int result = 0;
 		if(mode == 1)//こっちしか機能してない
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
 		else if(mode == 2)
 			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
 			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
@@ -98,7 +98,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 }
 
 //計算部分
-int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh,
+int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman,
 																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
 {
 
@@ -405,17 +405,19 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//debug_log(log2);
 			//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 
-			//--予測あり--//
-			cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
-			cv::Mat measurement(3, 1, CV_64F);
-			kf.fillMeasurements(measurement, translation_measured);
-			// Instantiate estimated translation and rotation
-			cv::Mat translation_estimated(3, 1, CV_64F);
-			// update the Kalman filter with good measurements
-			kf.updateKalmanfilter(measurement, translation_estimated);
-			cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
-			_dstT_kf.copyTo(_dstT);
-
+			if(isKalman)
+			{
+				//--予測あり--//
+				cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
+				cv::Mat measurement(3, 1, CV_64F);
+				kf.fillMeasurements(measurement, translation_measured);
+				// Instantiate estimated translation and rotation
+				cv::Mat translation_estimated(3, 1, CV_64F);
+				// update the Kalman filter with good measurements
+				kf.updateKalmanfilter(measurement, translation_estimated);
+				cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
+				_dstT_kf.copyTo(_dstT);
+			}
 			//cTimeStart = CFileTime::GetCurrentTime();           // 現在時刻
 
 			//マスクをかける
@@ -487,8 +489,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			_dstR.copyTo(dstR);
 			_dstT.copyTo(dstT);
-			//_dstT_kf.copyTo(dstT);
-
 
 			//std::string logAve = "aveError: ";
 			//std::string logAve2 =std::to_string(aveError);
