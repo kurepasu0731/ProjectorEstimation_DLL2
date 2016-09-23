@@ -27,10 +27,13 @@ public:
 	void initKalmanfilter(int _nStates, int _nMeasurements, int _nInputs, int _dt);
 
 	//観測値の成形
-	void fillMeasurements(cv::Mat &measurements, cv::Mat translation_measured);
+	void fillMeasurements(cv::Mat &measurements, const cv::Mat &translation_measured);
+	//void fillMeasurements(cv::Mat &measurements, const cv::Mat &translation_measured, const cv::Mat &rotation_measured);
+
 
 	//観測値を登録し、更新、予測値の取得
-	void updateKalmanfilter(cv::Mat measurement, cv::Mat &translation_estimated);
+	void updateKalmanfilter(cv::Mat &measurement, cv::Mat &translation_estimated);
+	//void updateKalmanfilter(cv::Mat &measurement, cv::Mat &translation_estimated, cv::Mat &rotation_estimated);
 
 	//回転行列→オイラー
 	cv::Mat rot2euler(cv::Mat rot);

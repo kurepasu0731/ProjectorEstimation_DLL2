@@ -2,15 +2,15 @@
 
 void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInputs, int _dt)
 {
-	nStates = _nStates;
-	nMeasurements = _nMeasurements;
-	nInputs = _nInputs;
-	dt = _dt;
+	nStates = _nStates; //状態の数
+	nMeasurements = _nMeasurements;//変数の数
+	nInputs = _nInputs;//the number of action control???
+	dt = _dt; // 1/fps
 
 	KF.init(nStates, nMeasurements, nInputs, CV_64F); //init KalmanFilter
 
-	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-3));        // プロセスノイズ（時間遷移に関するノイズ）の共分散行列 (Q)
-	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-3));   // 観測ノイズの共分散行列 (R)
+	cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-3));        // プロセスノイズ（時間遷移に関するノイズ）の共分散行列 (Q)   ->小さく？
+	cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-3));   // 観測ノイズの共分散行列 (R) (小さくすると速くなるけど精度が落ちる) ->大きく？
 	cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // 今の時刻の誤差行列 (P'(k))
 
 					/* DYNAMIC MODEL */
@@ -33,15 +33,16 @@ void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInpu
 	//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  0   0   1   0]
 	//  [0 0 0  0  0  0   0   0   0 0 0 0  0  0  0   0   0   1]
 	// position
+	//transitionMatrix: 状態空間を観測空間に線形写像する役割を担う観測モデル
 	KF.transitionMatrix.at<double>(0,3) = dt;
 	KF.transitionMatrix.at<double>(1,4) = dt;
 	KF.transitionMatrix.at<double>(2,5) = dt;
-	//KF.transitionMatrix.at<double>(3,6) = dt;
-	//KF.transitionMatrix.at<double>(4,7) = dt;
-	//KF.transitionMatrix.at<double>(5,8) = dt;
-	//KF.transitionMatrix.at<double>(0,6) = 0.5*pow(dt,2);
-	//KF.transitionMatrix.at<double>(1,7) = 0.5*pow(dt,2);
-	//KF.transitionMatrix.at<double>(2,8) = 0.5*pow(dt,2);
+	KF.transitionMatrix.at<double>(3,6) = dt;
+	KF.transitionMatrix.at<double>(4,7) = dt;
+	KF.transitionMatrix.at<double>(5,8) = dt;
+	KF.transitionMatrix.at<double>(0,6) = 0.5*pow(dt,2);
+	KF.transitionMatrix.at<double>(1,7) = 0.5*pow(dt,2);
+	KF.transitionMatrix.at<double>(2,8) = 0.5*pow(dt,2);
 	// orientation
 	//KF.transitionMatrix.at<double>(9,12) = dt;
 	//KF.transitionMatrix.at<double>(10,13) = dt;
@@ -68,21 +69,23 @@ void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInpu
 
 }
 
-void Kalmanfilter::fillMeasurements(cv::Mat &measurements, cv::Mat translation_measured)
+//void Kalmanfilter::fillMeasurements(cv::Mat &measurements, const cv::Mat &translation_measured, const cv::Mat &rotation_measured)
+void Kalmanfilter::fillMeasurements(cv::Mat &measurements, const cv::Mat &translation_measured)
 {
     //// Convert rotation matrix to euler angles
-    //cv::Mat measured_eulers(3, 1, CV_64F);
-    //measured_eulers = rot2euler(rotation_measured);
+    cv::Mat measured_eulers(3, 1, CV_64F);
+   // measured_eulers = rot2euler(rotation_measured); //(yaw,pitch, roll)の順？
     // Set measurement to predict
     measurements.at<double>(0) = translation_measured.at<double>(0); // x
     measurements.at<double>(1) = translation_measured.at<double>(1); // y
     measurements.at<double>(2) = translation_measured.at<double>(2); // z
-    //measurements.at<double>(3) = measured_eulers.at<double>(0);      // roll
-    //measurements.at<double>(4) = measured_eulers.at<double>(1);      // pitch
-    //measurements.at<double>(5) = measured_eulers.at<double>(2);      // yaw
+    //measurements.at<double>(3) = measured_eulers.at<double>(0);      // roll (2)?
+    //measurements.at<double>(4) = measured_eulers.at<double>(1);      // pitch (1)?
+    //measurements.at<double>(5) = measured_eulers.at<double>(2);      // yaw (0)?
 }
 
-void Kalmanfilter::updateKalmanfilter(cv::Mat measurement, cv::Mat &translation_estimated)
+//void Kalmanfilter::updateKalmanfilter(cv::Mat &measurement, cv::Mat &translation_estimated, cv::Mat &rotation_estimated)
+void Kalmanfilter::updateKalmanfilter(cv::Mat &measurement, cv::Mat &translation_estimated)
 {
     // First predict, to update the internal statePre variable
     cv::Mat prediction = KF.predict();
@@ -94,11 +97,11 @@ void Kalmanfilter::updateKalmanfilter(cv::Mat measurement, cv::Mat &translation_
     translation_estimated.at<double>(2) = estimated.at<double>(2);
     //// Estimated euler angles
     //cv::Mat eulers_estimated(3, 1, CV_64F);
-    //eulers_estimated.at<double>(0) = estimated.at<double>(9);
-    //eulers_estimated.at<double>(1) = estimated.at<double>(10);
-    //eulers_estimated.at<double>(2) = estimated.at<double>(11);
+    //eulers_estimated.at<double>(0) = estimated.at<double>(9); //(11)?
+    //eulers_estimated.at<double>(1) = estimated.at<double>(10); //(10)?
+    //eulers_estimated.at<double>(2) = estimated.at<double>(11); //(9)?
     //// Convert estimated quaternion to rotation matrix
-    //rotation_estimated = euler2rot(eulers_estimated);
+    //rotation_estimated = euler2rot(eulers_estimated.at<double>(0),eulers_estimated.at<double>(1),eulers_estimated.at<double>(2)); //(yaw,pitch, roll)の順？
 }
 
 /** this conversion uses conventions as described on page:

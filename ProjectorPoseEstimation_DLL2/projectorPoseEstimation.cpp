@@ -409,14 +409,20 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				//--ó\ë™Ç†ÇË--//
 				cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
+				//cv::Mat rotation_measured = (cv::Mat_<double>(3, 3) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2),_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2));
 				cv::Mat measurement(3, 1, CV_64F);
+				//kf.fillMeasurements(measurement, translation_measured, rotation_measured);
 				kf.fillMeasurements(measurement, translation_measured);
 				// Instantiate estimated translation and rotation
 				cv::Mat translation_estimated(3, 1, CV_64F);
+				//cv::Mat rotation_estimated(3, 3, CV_64F);
 				// update the Kalman filter with good measurements
+				//kf.updateKalmanfilter(measurement, translation_estimated, rotation_estimated);
 				kf.updateKalmanfilter(measurement, translation_estimated);
 				cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
+				//cv::Mat _dstR_kf = (cv::Mat_<double>(3, 3) << rotation_estimated.at<double>(0, 0), rotation_estimated.at<double>(0, 1), rotation_estimated.at<double>(0, 2), rotation_estimated.at<double>(1, 0), rotation_estimated.at<double>(1, 1), rotation_estimated.at<double>(1, 2), rotation_estimated.at<double>(2, 0), rotation_estimated.at<double>(2, 1), rotation_estimated.at<double>(2, 2));
 				_dstT_kf.copyTo(_dstT);
+				//_dstR_kf.copyTo(_dstR);
 			}
 			//cTimeStart = CFileTime::GetCurrentTime();           // åªç›éûçè
 

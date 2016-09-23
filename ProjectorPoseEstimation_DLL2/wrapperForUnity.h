@@ -18,7 +18,7 @@ extern "C" {
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
 	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
 																	double initR[], double initT[], double dstR[], double dstT[],
-																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode);
+																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, bool isKalman);
 
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新入り)
 

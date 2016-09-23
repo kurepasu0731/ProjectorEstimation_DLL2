@@ -78,7 +78,7 @@ public:
 		projector = new WebCamera(prowidth, proheight);
 		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
-		kf.initKalmanfilter(6, 3, 0, 1);
+		kf.initKalmanfilter(9, 3, 0, 0.125);
 
 		//プロジェクタ画像読み込み,描画用画像作成
 		proj_img = cv::imread(backgroundImgFile);
