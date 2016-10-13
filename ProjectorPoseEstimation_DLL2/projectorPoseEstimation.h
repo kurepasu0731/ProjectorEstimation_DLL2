@@ -7,6 +7,7 @@
 #include "NonLinearOptimization.h"
 #include "KalmanFilter.h"
 
+
 #include <opencv2/opencv.hpp>
 #include <random>
 
@@ -41,6 +42,10 @@ public:
 	std::vector<cv::Point2f> camcorners;
 	//プロジェクタ画像上のコーナー点
 	std::vector<cv::Point2f> projcorners;
+
+	//歪み除去後のカメラ画像のコーナー点
+	std::vector<cv::Point2f> undistort_imagePoint;
+
 
 	//3次元点(カメラ中心)LookUpテーブル
 	//** index = カメラ画素(左上始まり)
@@ -78,7 +83,8 @@ public:
 		projector = new WebCamera(prowidth, proheight);
 		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
-		kf.initKalmanfilter(9, 3, 0, 0.125);
+		kf.initKalmanfilter(6, 3, 0, 1);//等速度
+		//kf.initKalmanfilter(9, 3, 0, 1);//等加速度
 
 		//プロジェクタ画像読み込み,描画用画像作成
 		proj_img = cv::imread(backgroundImgFile);
@@ -115,6 +121,17 @@ public:
 
 	//コーナー検出
 	bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
+
+	//処理時間計測・DebugLog表示用
+	void startTic()
+	{
+		cTimeStart = CFileTime::GetCurrentTime();// 現在時刻
+	}
+
+	//処理時間計測用・DebugLog表示用
+	//文字列が長すぎると文字化ける
+	void stopTic(std::string label);
+
 
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)

@@ -37,12 +37,13 @@ void Kalmanfilter::initKalmanfilter(int _nStates, int _nMeasurements, int _nInpu
 	KF.transitionMatrix.at<double>(0,3) = dt;
 	KF.transitionMatrix.at<double>(1,4) = dt;
 	KF.transitionMatrix.at<double>(2,5) = dt;
-	KF.transitionMatrix.at<double>(3,6) = dt;
-	KF.transitionMatrix.at<double>(4,7) = dt;
-	KF.transitionMatrix.at<double>(5,8) = dt;
-	KF.transitionMatrix.at<double>(0,6) = 0.5*pow(dt,2);
-	KF.transitionMatrix.at<double>(1,7) = 0.5*pow(dt,2);
-	KF.transitionMatrix.at<double>(2,8) = 0.5*pow(dt,2);
+	//“™‰Á‘¬“x
+	//KF.transitionMatrix.at<double>(3,6) = dt;
+	//KF.transitionMatrix.at<double>(4,7) = dt;
+	//KF.transitionMatrix.at<double>(5,8) = dt;
+	//KF.transitionMatrix.at<double>(0,6) = 0.5*pow(dt,2);
+	//KF.transitionMatrix.at<double>(1,7) = 0.5*pow(dt,2);
+	//KF.transitionMatrix.at<double>(2,8) = 0.5*pow(dt,2);
 	// orientation
 	//KF.transitionMatrix.at<double>(9,12) = dt;
 	//KF.transitionMatrix.at<double>(10,13) = dt;

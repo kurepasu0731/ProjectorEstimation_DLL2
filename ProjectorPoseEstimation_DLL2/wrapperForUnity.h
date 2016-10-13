@@ -5,7 +5,6 @@
 
 #include "projectorPoseEstimation.h"
 
-
 #define DLLExport __declspec (dllexport)
 
 extern "C" {
@@ -34,5 +33,7 @@ extern "C" {
 
 	//カメラ画像用マスクの作成
 	DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data);
+
+    
 }
 #endif
