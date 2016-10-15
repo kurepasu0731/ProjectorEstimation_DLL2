@@ -37,22 +37,35 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
 bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, bool isKalman,
+												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+												   double thresh, 
+												   int mode,
+												   bool isKalman,
+												   double C, int dotsMin, int dotsMax,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
-	startTic();
+	//startTic();
 
-	//カメラ画像上のコーナー検出
-	bool detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
-	//プロジェクタ画像上のコーナー検出
-	//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
-
+	bool detect_cam = false;
+	if(mode == 4)
+	{
+		cv::Mat src;
+		cv::cvtColor(camframe, src, CV_BGR2GRAY);
+		detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, draw_camimage);
+	}
+	else
+	{
+		//カメラ画像上のコーナー検出
+		detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
+		//プロジェクタ画像上のコーナー検出
+		//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+	}
 	//stopTic("conerDetect");
 
 	//コーナー検出できたら、位置推定開始
 	if(detect_cam && detect_proj)
 	{
-		startTic();
+		//startTic();
 
 		// 対応点の歪み除去
 //		std::vector<cv::Point2f> undistort_imagePoint;
@@ -74,7 +87,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 		cv::Mat _dstT = cv::Mat::zeros(3,1,CV_64F);
 
 		int result = 0;
-		if(mode == 1)//こっちしか機能してない
+		if(mode == 1 || mode == 4)//こっちしか機能してない
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
 			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
 		else if(mode == 2)
@@ -372,7 +385,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			cv::Mat _dstR, _dstT;
 			//int result = calcParameters(projPoints_valid, reconstructPoints_order, initialR, initialT, _dstR, _dstT);
 			//パラメータを求める(RANSAC)
-			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 20, thresh, _dstR, _dstT);
+			int result = calcParameters_RANSAC(projPoints_valid, reconstructPoints_order, initialR, initialT, 10, thresh, _dstR, _dstT);
 
 			//stopTic("calclate");
 
@@ -784,7 +797,7 @@ bool ProjectorEstimation::getCorners(cv::Mat frame, std::vector<cv::Point2f> &co
 	cv::goodFeaturesToTrack(gray_img, corners, num, 0.01, minDistance);
 
 	//高精度化
-	cv::cornerSubPix(gray_img, corners, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
+	cv::cornerSubPix(gray_img, corners, cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
 
 	//描画
 	for(int i = 0; i < corners.size(); i++)
@@ -1277,6 +1290,112 @@ void ProjectorEstimation::stopTic(std::string label)
 		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
 		std::string timelog = label +": " + std::to_string(cTimeSpan.GetTimeSpan()/10000);
 		debug_log(timelog);
+}
+
+//**ランダムドットマーカー用**//	
+//csvファイルから円の座標を読み込む
+bool ProjectorEstimation::loadDots(std::vector<cv::Point2f> &corners, cv::Mat &drawimage)
+{
+	string filename = "Calibration/dots.csv";
+
+    //ファイルの読み込み
+    ifstream ifs(filename);
+    if(!ifs){
+        return false;
+    }
+
+    //csvファイルを1行ずつ読み込む
+    string str;
+    while(getline(ifs,str)){
+        string token;
+        istringstream stream(str);
+
+		//x座標
+		getline(stream,token,',');
+		int x = std::stoi(token);
+		//y座標
+		getline(stream,token,',');
+		int y = std::stoi(token);
+
+		corners.emplace_back(cv::Point2f(x, y));
+
+	}
+	return true;
+}
+//ドット検出
+bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &dots, double C, int dots_thresh_min, int dots_thresh_max, cv::Mat &drawimage)
+{
+	dots.clear();
+	//適応的閾値処理
+	cv::adaptiveThreshold(src, src, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, C);
+
+	cv::Point sum, min, max, p;
+	int cnt;
+	for (int i = 0; i < camera->height; i++) {
+		for (int j = 0; j < camera->width; j++) {
+			if (src.at<uchar>(i, j)) {
+				sum = cv::Point(0, 0); cnt = 0; min = cv::Point(j, i); max = cv::Point(j, i);
+				calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(j, i));
+				if (cnt>dots_thresh_min && max.x - min.x < dots_thresh_max && max.y - min.y < dots_thresh_max) {
+					dots.push_back(cv::Point(sum.x / cnt, sum.y / cnt));
+				}
+			}
+		}
+	}
+
+
+	//cv::rectangle(ptsImg, cv::Point(CamWidth / 4, CamHeight / 4), cv::Point(CamWidth * 3 / 4, CamHeight * 3 / 4), cv::Scalar(255, 0, 0), 5, 4);
+	// OpenGL用に予めRGB用のデータ作成
+	//cv::rectangle(ptsImg, cv::Point(CamWidth / 4, CamHeight / 4), cv::Point(CamWidth * 3 / 4, CamHeight * 3 / 4), cv::Scalar(0, 0, 255), 5, 4);
+	std::vector<cv::Point2f>::iterator it = dots.begin();
+	
+	//bool k = (dots.size()==projcorners.size());
+	bool k = (dots.size() >= 20);
+	//for (int i=0; it != dots.end(); i++,++it) {
+	//	if (i && i%MarkersWidth == 0) {
+	//		if ((*it).y <= (*(it - 1)).y) k = false;
+	//	} else {
+	//		if (i && (*it).x <= (*(it - 1)).x) k = false;
+	//	}
+	//}
+	//cv::Scalar co = k ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+	// OpenGL用に予めRGB用のデータ作成
+	cv::Scalar color = k ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0);
+	for (it = dots.begin(); it != dots.end(); ++it) {
+		cv::circle(drawimage, *it, 3, color, 2);
+	}
+
+	//if (k) {
+	//	it = dots.begin();
+	//	for (int i = 0; it != dots.end(); ++it) {
+	//		marker_u[i / MarkersWidth][i%MarkersWidth] = *it;
+	//		marker_s[i / MarkersWidth][i%MarkersWidth] = true;
+	//		i++;
+	//	}
+	//	
+	//	flag = 1;
+	//	std::cout << "init complete!" << std::endl;
+	//	
+	//}
+
+	return k;
+}
+
+void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p)
+{
+	if (src.at<uchar>(p)) {
+		sum += p; cnt++;
+		src.at<uchar>(p) = 0;
+		if (p.x<min.x) min.x = p.x;
+		if (p.x>max.x) max.x = p.x;
+		if (p.y<min.y) min.y = p.y;
+		if (p.y>max.y) max.y = p.y;
+
+		if (p.x - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x-1, p.y));
+		if (p.x + 1 < camera->width) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x + 1, p.y));
+		if (p.y - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y - 1));
+		if (p.y + 1 < camera->height) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y + 1));
+	}
 }
 
 

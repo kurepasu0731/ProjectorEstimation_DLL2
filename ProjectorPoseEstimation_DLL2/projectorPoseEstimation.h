@@ -21,6 +21,12 @@
 
 #include <atltime.h>
 
+#include<fstream>
+#include<iostream>
+#include<string>
+#include<sstream> //文字ストリーム
+
+
 
 //#define DLLExport __declspec (dllexport)
 
@@ -113,8 +119,13 @@ public:
 	void loadReconstructFile(const std::string& filename);
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
-	bool findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
-		int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, bool isKalman, cv::Mat &draw_camimage, cv::Mat &draw_projimage);
+	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
+													   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+													   double thresh, 
+													   int mode,
+													   bool isKalman,
+													   double C, int dotsMin, int dotsMax,
+													   cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
@@ -131,6 +142,9 @@ public:
 	//処理時間計測用・DebugLog表示用
 	//文字列が長すぎると文字化ける
 	void stopTic(std::string label);
+
+	//csvファイルから円の座標を読み込む
+	bool ProjectorEstimation::loadDots(std::vector<cv::Point2f> &corners, cv::Mat &drawimage);
 
 
 private:
@@ -178,6 +192,12 @@ private:
 
 	//対応点からRとTの算出(RANSAC)
 	int calcParameters_RANSAC(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, int num, float thresh, cv::Mat& dstR, cv::Mat& dstT);
+
+	//**ランダムドットマーカー用**//	
+	//ドット検出
+	bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &corners, double C, int dots_thresh_min, int dots_thresh_max, cv::Mat &drawimage);
+
+	void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p);
 
 };
 

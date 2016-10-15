@@ -34,7 +34,11 @@ DLLExport void callloadParam(void* projectorestimation, double initR[], double i
 //プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
 DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
 																double _initR[], double _initT[], double _dstR[], double _dstT[],
-																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, double thresh, int mode, bool isKalman)
+																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+																double thresh, 
+																int mode, 
+																bool isKalman,
+																double C, int dotsMin, int dotsMax)
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 
@@ -70,10 +74,20 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 
 		//プロジェクタ画像上のコーナー検出(最初の一回のみ)
 		if(pe->detect_proj == false)
-			pe->detect_proj = pe->getCorners(pe->proj_img, pe->projcorners, projMinDist, projCornerNum, proj_drawing); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+		{
+			//ドットパターンによる対応点取得
+			if(mode == 4)
+			{
+				pe->detect_proj = pe->loadDots(pe->projcorners, proj_drawing);
+			}
+			else
+			{
+				pe->detect_proj = pe->getCorners(pe->proj_img, pe->projcorners, projMinDist, projCornerNum, proj_drawing); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+			}
+		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, cam_drawimg, proj_drawing);
+			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, cam_drawimg, proj_drawing);
 		else
 			result = false;
 	}
