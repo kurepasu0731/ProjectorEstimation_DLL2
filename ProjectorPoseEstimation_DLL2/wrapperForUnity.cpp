@@ -33,7 +33,7 @@ DLLExport void callloadParam(void* projectorestimation, double initR[], double i
 
 //プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
 DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
-																double _initR[], double _initT[], double _dstR[], double _dstT[],
+																double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
 																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																double thresh, 
 																int mode, 
@@ -42,6 +42,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 
+	//pe->startTic();
 
 	//カメラ画像をMatに復元
 	cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC3, cam_data);
@@ -53,13 +54,15 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	//1フレーム後の推定値
 	cv::Mat dstR = cv::Mat::eye(3,3,CV_64F);
 	cv::Mat dstT = cv::Mat::zeros(3,1,CV_64F);
+	cv::Mat error = cv::Mat::zeros(1,1,CV_64F);
 
 	//pe->startTic();
 	cv::Mat cam_drawimg = cam_img.clone();
 	//pe->stopTic("camImgClone");
 	cv::Mat proj_drawing;
 
-
+	//pe->stopTic("aaa");
+	
 	bool result = false;
 
 	//位置推定メソッド呼び出し
@@ -87,7 +90,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, cam_drawimg, proj_drawing);
+			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, cam_drawimg, proj_drawing);
 		else
 			result = false;
 	}
@@ -108,11 +111,12 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 		_dstT[0] = dstT.at<double>(0, 0);
 		_dstT[1] = dstT.at<double>(1, 0);
 		_dstT[2] = dstT.at<double>(2, 0);
+		aveError[0] = error.at<double>(0, 0);
 	}else
 	{
 	}
 
-	//pe->startTic();
+	pe->startTic();
 	//コーナー検出結果表示(5ms)
 	cv::Mat resize_cam, resize_proj;
 	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.8, 0.8);
@@ -120,7 +124,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	cv::imshow("Camera detected corners", resize_cam);
 	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.8, 0.8);
 	cv::imshow("Projector detected corners", resize_proj);
-	//pe->stopTic("show");
+	pe->stopTic("show");
 
 	return result;
 }

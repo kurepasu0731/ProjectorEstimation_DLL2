@@ -36,7 +36,7 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 }
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
-bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, 
+bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
 												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 												   double thresh, 
 												   int mode,
@@ -44,6 +44,12 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 												   double C, int dotsMin, int dotsMax,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
+	//処理時間計測
+	CFileTime cTimeStart_, cTimeEnd_;
+	CFileTimeSpan cTimeSpan_;
+
+	cTimeStart_ = CFileTime::GetCurrentTime();// 現在時刻
+
 	//startTic();
 
 	bool detect_cam = false;
@@ -85,19 +91,28 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 
 		cv::Mat _dstR = cv::Mat::eye(3,3,CV_64F);
 		cv::Mat _dstT = cv::Mat::zeros(3,1,CV_64F);
+		cv::Mat  _error = cv::Mat::zeros(1,1,CV_64F);
 
 		int result = 0;
 		if(mode == 1 || mode == 4)//こっちしか機能してない
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, initialR, initialT, _dstR, _dstT, _error, draw_camimage, draw_projimage);
 		else if(mode == 2)
 			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
 			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
 
 		_dstR.copyTo(dstR);
 		_dstT.copyTo(dstT);
+		_error.copyTo(error);
 
 		//stopTic("calcConer1");
+
+		cTimeEnd_ = CFileTime::GetCurrentTime();           // 現在時刻
+		cTimeSpan_ = cTimeEnd_ - cTimeStart_;
+		//debug_log(log);
+		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
+		std::string timelog = "totalTime: " + std::to_string(cTimeSpan_.GetTimeSpan()/10000);
+		debug_log(timelog);
 
 		if(result > 0) return true;
 		else return false;
@@ -110,7 +125,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 
 //計算部分
 int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman,
-																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
+																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat &draw_camimage, cv::Mat &chessimage)
 {
 
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
@@ -431,7 +446,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//対応点の様子を描画
 			vector<cv::Point2d> projection_P;
 			vector<double> errors;
-			//double aveError = 0; //平均再投影
+			double aveError = 0; //平均再投影
 			calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT, projection_P, errors);
 			//calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT_kf, projection_P, errors);
 
@@ -452,10 +467,10 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				//線で結ぶ
 				cv::line(chessimage, pp, cp, cv::Scalar(255, 0, 255), 4);//ピンク(太)
 
-				//aveError += errors[i];
+				aveError += errors[i];
 			}
 
-			//aveError /= errors.size();
+			aveError /= errors.size();
 			////プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			//double percent = (projPoints_valid.size() * 100) / projPoints.size();
 
@@ -475,9 +490,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				preDists[i] = distance;
 			}
 
+
 			_dstR.copyTo(dstR);
 			_dstT.copyTo(dstT);
-
+			cv::Mat _error = (cv::Mat_<double>(1, 1) << aveError); 
+			_error.copyTo(error);
 
 			//std::string logAve = "aveError: ";
 			//std::string logAve2 =std::to_string(aveError);
