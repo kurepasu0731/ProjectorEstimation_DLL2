@@ -57,6 +57,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 	{
 		cv::Mat src;
 		cv::cvtColor(camframe, src, CV_BGR2GRAY);
+		//src = camframe.clone(); //PGR
 		detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, draw_camimage);
 	}
 	else
