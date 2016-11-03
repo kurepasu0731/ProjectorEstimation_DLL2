@@ -45,7 +45,8 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	//pe->startTic();
 
 	//ƒJƒƒ‰‰æ‘œ‚ðMat‚É•œŒ³
-	cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC3, cam_data);
+	cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC1, cam_data);  //PGR
+	//cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC3, cam_data); 
 
 
 	cv::Mat initR = (cv::Mat_<double>(3,3) << _initR[0], _initR[1], _initR[2], _initR[3], _initR[4], _initR[5], _initR[6], _initR[7], _initR[8] );
