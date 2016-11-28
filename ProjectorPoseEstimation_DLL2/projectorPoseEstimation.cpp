@@ -48,7 +48,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 	CFileTime cTimeStart_, cTimeEnd_;
 	CFileTimeSpan cTimeSpan_;
 
-	cTimeStart_ = CFileTime::GetCurrentTime();// 現在時刻
+	//cTimeStart_ = CFileTime::GetCurrentTime();// 現在時刻
 
 	//startTic();
 
@@ -108,12 +108,12 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 
 		//stopTic("calcConer1");
 
-		cTimeEnd_ = CFileTime::GetCurrentTime();           // 現在時刻
-		cTimeSpan_ = cTimeEnd_ - cTimeStart_;
+		//cTimeEnd_ = CFileTime::GetCurrentTime();           // 現在時刻
+		//cTimeSpan_ = cTimeEnd_ - cTimeStart_;
 		//debug_log(log);
 		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
-		std::string timelog = "totalTime: " + std::to_string(cTimeSpan_.GetTimeSpan()/10000);
-		debug_log(timelog);
+		//std::string timelog = "totalTime: " + std::to_string(cTimeSpan_.GetTimeSpan()/10000);
+		//debug_log(timelog);
 
 		if(result > 0) return true;
 		else return false;
@@ -430,19 +430,19 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			}
 
-			////マスクをかける
-			//for(int y = 0; y < draw_camimage.rows; y++)
-			//{
-			//	for(int x = 0; x < draw_camimage.cols; x++)
-			//	{
-			//		if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
-			//		{
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
-			//		}
-			//	}
-			//}
+			//マスクをかける
+			for(int y = 0; y < draw_camimage.rows; y++)
+			{
+				for(int x = 0; x < draw_camimage.cols; x++)
+				{
+					if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
+					{
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
+							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
+					}
+				}
+			}
 
 			//対応点の様子を描画
 			vector<cv::Point2d> projection_P;

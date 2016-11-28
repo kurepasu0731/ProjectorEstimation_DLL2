@@ -117,7 +117,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	{
 	}
 
-	pe->startTic();
+	//pe->startTic();
 	//コーナー検出結果表示(5ms)
 	cv::Mat resize_cam, resize_proj;
 	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.8, 0.8);
@@ -125,7 +125,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	cv::imshow("Camera detected corners", resize_cam);
 	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.8, 0.8);
 	cv::imshow("Projector detected corners", resize_proj);
-	pe->stopTic("show");
+	//pe->stopTic("show");
 
 	return result;
 }
