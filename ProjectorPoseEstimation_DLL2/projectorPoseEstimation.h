@@ -124,7 +124,7 @@ public:
 													   double thresh, 
 													   int mode,
 													   bool isKalman,
-													   double C, int dotsMin, int dotsMax,
+													   double C, int dotsMin, int dotsMax, float resizeScale,
 													   cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
@@ -195,7 +195,7 @@ private:
 
 	//**ランダムドットマーカー用**//	
 	//ドット検出
-	bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &corners, double C, int dots_thresh_min, int dots_thresh_max, cv::Mat &drawimage);
+	bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &corners, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage);
 
 	void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p);
 

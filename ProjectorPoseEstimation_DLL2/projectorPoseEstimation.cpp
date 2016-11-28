@@ -41,7 +41,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 												   double thresh, 
 												   int mode,
 												   bool isKalman,
-												   double C, int dotsMin, int dotsMax,
+												   double C, int dotsMin, int dotsMax, float resizeScale,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
 	//処理時間計測
@@ -58,7 +58,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 		cv::Mat src;
 		cv::cvtColor(camframe, src, CV_BGR2GRAY);
 		//src = camframe.clone(); //PGR
-		detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, draw_camimage);
+		detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, resizeScale, draw_camimage);
 	}
 	else
 	{
@@ -1341,21 +1341,33 @@ bool ProjectorEstimation::loadDots(std::vector<cv::Point2f> &corners, cv::Mat &d
 	return true;
 }
 //ドット検出
-bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &dots, double C, int dots_thresh_min, int dots_thresh_max, cv::Mat &drawimage)
+bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &dots, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage)
 {
 	dots.clear();
+	//リサイズ
+	cv::Mat resized;
+	cv::resize(src, resized, cv::Size(), resizeScale, resizeScale);
 	//適応的閾値処理
-	cv::adaptiveThreshold(src, src, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, C);
+	cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, C);
+	//膨張処理
+	cv::dilate(resized, resized, cv::Mat());
+	//原寸大に戻す
+	cv::Mat ptsImg = cv::Mat::zeros( camera->height, camera->width, CV_8UC1); //原寸大表示用
+	cv::resize(resized, ptsImg, cv::Size(), 1/resizeScale, 1/resizeScale);
+	//cv::Mat ptsImgColor; 
+	//cv::cvtColor(ptsImg, ptsImgColor, CV_GRAY2BGR);
 
 	cv::Point sum, min, max, p;
 	int cnt;
-	for (int i = 0; i < camera->height; i++) {
-		for (int j = 0; j < camera->width; j++) {
-			if (src.at<uchar>(i, j)) {
+	for (int i = 0; i < ptsImg.rows; i++) {
+		for (int j = 0; j < ptsImg.cols; j++) {
+			if (ptsImg.at<uchar>(i, j)) {
 				sum = cv::Point(0, 0); cnt = 0; min = cv::Point(j, i); max = cv::Point(j, i);
-				calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(j, i));
+				calCoG_dot_v0(ptsImg, sum, cnt, min, max, cv::Point(j, i));
 				if (cnt>dots_thresh_min && max.x - min.x < dots_thresh_max && max.y - min.y < dots_thresh_max) {
 					dots.push_back(cv::Point(sum.x / cnt, sum.y / cnt));
+					//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
+
 				}
 			}
 		}
@@ -1381,7 +1393,10 @@ bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &dots, 
 	cv::Scalar color = k ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0);
 	for (it = dots.begin(); it != dots.end(); ++it) {
 		cv::circle(drawimage, *it, 3, color, 2);
+		//cv::circle(ptsImgColor, *it, 3, color, 2);
 	}
+	
+	//cv::imshow("detected dots", ptsImgColor); 
 
 	//if (k) {
 	//	it = dots.begin();

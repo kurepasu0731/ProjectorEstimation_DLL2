@@ -38,7 +38,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 																double thresh, 
 																int mode, 
 																bool isKalman,
-																double C, int dotsMin, int dotsMax)
+																double C, int dotsMin, int dotsMax, float resizeScale)
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 
@@ -91,7 +91,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, cam_drawimg, proj_drawing);
+			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, resizeScale, cam_drawimg, proj_drawing);
 		else
 			result = false;
 	}

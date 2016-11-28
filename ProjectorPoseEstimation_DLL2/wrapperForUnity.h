@@ -21,7 +21,7 @@ extern "C" {
 																	double thresh, 
 																	int mode, 
 																	bool isKalman,
-																	double C, int dotsMin, int dotsMax);
+																	double C, int dotsMin, int dotsMax, float resizeScale);
 
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新入り)
 
