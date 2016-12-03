@@ -15,13 +15,14 @@ extern "C" {
 	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);
 
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
-	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
+	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data,
+																	int dotsCount, int dots_data[],
 																	double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
-																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+																	//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																	double thresh, 
 																	int mode, 
-																	bool isKalman,
-																	double C, int dotsMin, int dotsMax, float resizeScale);
+																	bool isKalman);
+																	//double C, int dotsMin, int dotsMax, float resizeScale);
 
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新入り)
 
@@ -38,6 +39,9 @@ extern "C" {
 	//カメラ画像用マスクの作成
 	DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data);
 
+
+	//ドット確認用
+	DLLExport void checkDotsArray(void* projectorestimation, unsigned char* cam_data, int dotsCount, int dots_data[]);
     
 }
 #endif

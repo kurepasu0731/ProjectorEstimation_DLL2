@@ -33,12 +33,13 @@ DLLExport void callloadParam(void* projectorestimation, double initR[], double i
 
 //プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
 DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, 
+																int dotsCount, int dots_data[],
 																double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
-																int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+																//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																double thresh, 
 																int mode, 
-																bool isKalman,
-																double C, int dotsMin, int dotsMax, float resizeScale)
+																bool isKalman)
+																//double C, int dotsMin, int dotsMax, float resizeScale)
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
 
@@ -57,9 +58,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	cv::Mat dstT = cv::Mat::zeros(3,1,CV_64F);
 	cv::Mat error = cv::Mat::zeros(1,1,CV_64F);
 
-	//pe->startTic();
-	cv::Mat cam_drawimg = cam_img.clone();
-	//pe->stopTic("camImgClone");
+//	cv::Mat cam_drawimg = cam_img.clone();
 	cv::Mat proj_drawing;
 
 	//pe->stopTic("aaa");
@@ -69,7 +68,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	//位置推定メソッド呼び出し
 	if(mode == 3)//チェッカパターン検出による推定
 	{	proj_drawing = pe->proj_img.clone();
-		result = pe->findProjectorPose(cam_img, initR, initT, dstR, dstT, cam_drawimg, proj_drawing);
+		result = pe->findProjectorPose(cam_img, initR, initT, dstR, dstT, cam_img, proj_drawing);
 	}
 	//コーナー検出による推定(プロジェクタ画像更新しないver)
 	else
@@ -86,12 +85,13 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 			}
 			else
 			{
-				pe->detect_proj = pe->getCorners(pe->proj_img, pe->projcorners, projMinDist, projCornerNum, proj_drawing); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+				//pe->detect_proj = pe->getCorners(pe->proj_img, pe->projcorners, projMinDist, projCornerNum, proj_drawing); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
 			}
 		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, resizeScale, cam_drawimg, proj_drawing);
+			result = pe->findProjectorPose_Corner( pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, thresh, mode, isKalman, cam_img, proj_drawing);
+			//result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, resizeScale, cam_img, proj_drawing);
 		else
 			result = false;
 	}
@@ -120,7 +120,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 	//pe->startTic();
 	//コーナー検出結果表示(5ms)
 	cv::Mat resize_cam, resize_proj;
-	cv::resize(cam_drawimg, resize_cam, cv::Size(), 0.8, 0.8);
+	cv::resize(cam_img, resize_cam, cv::Size(), 0.8, 0.8);
 
 	cv::imshow("Camera detected corners", resize_cam);
 	cv::resize(proj_drawing, resize_proj, cv::Size(), 0.8, 0.8);
@@ -251,3 +251,33 @@ DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_da
 	//一応保存
 	cv::imwrite("CameraMask.png", pe->CameraMask);
 }
+
+//ドット確認用
+DLLExport void checkDotsArray(void* projectorestimation, unsigned char* cam_data, int dotsCount, int dots_data[])
+{
+	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
+
+	//pe->startTic();
+
+	//カメラ画像をMatに復元
+	//cv::Mat cam_img(pe->camera->height, pe->camera->width, CV_8UC1, cam_data);  //PGR
+	cv::Mat cam_img(1200, 1920, CV_8UC3, cam_data); 
+
+	//ドット配列をvectorにする
+	std::vector<cv::Point2f> dots;
+	for(int i = 0; i < dotsCount*2; i+=2)
+	{
+		dots.emplace_back(cv::Point2f(dots_data[i], dots_data[i+1]));
+	}
+
+	//imgにドット描画
+	for(int i = 0; i < dots.size(); i++)
+	{
+		//描画(カメラ画像)
+		cv::circle(cam_img, dots[i], 1, cv::Scalar(255, 0, 0), 3); //青
+	}
+
+
+	cv::imshow("dots check", cam_img);
+}
+

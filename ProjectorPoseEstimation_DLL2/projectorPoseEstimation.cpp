@@ -36,12 +36,13 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 }
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
-bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
-												   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
+												   int dotsCount, int dots_data[],
+												   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 												   double thresh, 
 												   int mode,
 												   bool isKalman,
-												   double C, int dotsMin, int dotsMax, float resizeScale,
+												   //double C, int dotsMin, int dotsMax, float resizeScale,
 												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
 {
 	//処理時間計測
@@ -55,15 +56,25 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const
 	bool detect_cam = false;
 	if(mode == 4)
 	{
-		cv::Mat src;
-		cv::cvtColor(camframe, src, CV_BGR2GRAY);
-		//src = camframe.clone(); //PGR
-		detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, resizeScale, draw_camimage);
+		//cv::Mat src;
+		//cv::cvtColor(camframe, src, CV_BGR2GRAY);
+		////src = camframe.clone(); //PGR
+		//detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, resizeScale, draw_camimage);
+
+		//ドット配列をvectorにする
+		camcorners.clear();
+		for(int i = 0; i < dotsCount*2; i+=2)
+		{
+			camcorners.emplace_back(cv::Point2f(dots_data[i], dots_data[i+1]));
+		}
+
+		if(camcorners.size() > 0) detect_cam = true;
+		else detect_cam = false;
 	}
 	else
 	{
 		//カメラ画像上のコーナー検出
-		detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
+//		detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
 		//プロジェクタ画像上のコーナー検出
 		//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
 	}
@@ -430,19 +441,19 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			}
 
-			//マスクをかける
-			for(int y = 0; y < draw_camimage.rows; y++)
-			{
-				for(int x = 0; x < draw_camimage.cols; x++)
-				{
-					if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
-					{
-							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
-							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
-							draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
-					}
-				}
-			}
+			////マスクをかける
+			//for(int y = 0; y < draw_camimage.rows; y++)
+			//{
+			//	for(int x = 0; x < draw_camimage.cols; x++)
+			//	{
+			//		if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
+			//		{
+			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
+			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
+			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
+			//		}
+			//	}
+			//}
 
 			//対応点の様子を描画
 			vector<cv::Point2d> projection_P;

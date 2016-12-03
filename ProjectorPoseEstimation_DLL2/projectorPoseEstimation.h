@@ -119,12 +119,13 @@ public:
 	void loadReconstructFile(const std::string& filename);
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
-	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat camframe, const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
-													   int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
+	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
+													   int dotsCount, int dots_data[],
+													   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 													   double thresh, 
 													   int mode,
 													   bool isKalman,
-													   double C, int dotsMin, int dotsMax, float resizeScale,
+													   //double C, int dotsMin, int dotsMax, float resizeScale,
 													   cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
