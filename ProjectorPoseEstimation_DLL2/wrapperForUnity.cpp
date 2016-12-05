@@ -246,7 +246,17 @@ DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_da
 	//x²”½“]
 	cv::flip(bgr_img, flip_cam_img, 0);
 
-	pe->CameraMask = flip_cam_img.clone();
+	//–c’£ˆ—‚©‚¯‚Æ‚­
+	cv::Mat resizeimg, dilatedimg, resultimg;
+	cv::Mat element(9,9,CV_8U, cv::Scalar(1));
+	cv::bitwise_not(flip_cam_img, flip_cam_img);
+	cv::resize(flip_cam_img, resizeimg, cv::Size(), 0.5, 0.5);
+	cv::dilate(resizeimg, dilatedimg, element, cv::Point(-1,-1), 1);
+	cv::resize(dilatedimg, resultimg, cv::Size(), 2.0, 2.0);
+	cv::bitwise_not(resultimg, resultimg);
+	pe->CameraMask = resultimg.clone();
+
+	//pe->CameraMask = flip_cam_img.clone();
 
 	//ˆê‰•Û‘¶
 	cv::imwrite("CameraMask.png", pe->CameraMask);
