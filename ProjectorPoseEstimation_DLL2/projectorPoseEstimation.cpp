@@ -372,7 +372,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		for(int i = 0; i < projPoints.size(); i++){
 			//double distance = dists[i][0];
 			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
-			if( distance <= thresh+10|| preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば
+			if( distance <= thresh+10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
 			//if( distance <= thresh)
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
@@ -492,13 +492,13 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 																			_dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT.at<double>(1,0),
 																			_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT.at<double>(2,0),
 																			0, 0, 0, 1);
-			for(int i = 0; i < projPoints.size(); i++)
+			for(int i = 0; i < projPoints_valid.size(); i++)
 			{
 				// 2次元(プロジェクタ画像)平面へ投影
 				cv::Mat wp = (cv::Mat_<double>(4, 1) << reconstructPoints_valid[i].x, reconstructPoints_valid[i].y, reconstructPoints_valid[i].z, 1);
 				cv::Mat dst_p = projK_34 * _dstRt * wp;
 				cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-				double distance = sqrt(pow(projPoints[i].x - pt.x, 2) + pow(projPoints[i].y - pt.y, 2));
+				double distance = sqrt(pow(projPoints_valid[i].x - pt.x, 2) + pow(projPoints_valid[i].y - pt.y, 2));
 				preDists[i] = distance;
 			}
 
