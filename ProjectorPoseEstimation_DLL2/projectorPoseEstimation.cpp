@@ -370,10 +370,27 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		
 		//対応点間の距離が閾値以上離れていたら、外れ値として除去
 		for(int i = 0; i < projPoints.size(); i++){
+
+			double distAve = 0;
+			//arrayが30貯まっていてかつ、それらの重みつけ平均が閾値以上なら、対応点として追加
+			if(preDistsArrays[i].size() == preframesize)
+			{
+				//重みつけ平均
+				for(int j = 0; j < preframesize; j++)
+				{
+					distAve += ((preframesize - j) * preDistsArrays[i][j]); //新しいものほど重みを軽くする
+				}
+				distAve /= sum;
+			}
+
+			//std::string logAve = std::to_string(distAve);
+			//debug_log(logAve);
+
 			//double distance = dists[i][0];
-			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
-			if( distance <= thresh+10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
+//			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
+//			if( distance <= thresh + 10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
 			//if( distance <= thresh)
+			if(distAve <= thresh && preDistsArrays[i].size() == preframesize)
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
 				imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
@@ -500,6 +517,20 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
 				double distance = sqrt(pow(projPoints[i].x - pt.x, 2) + pow(projPoints[i].y - pt.y, 2));
 				preDists[i] = distance;
+
+				//arraysへの値の代入(MAXが30で、後ろからいれる・前のを押し出す)
+				if(preDistsArrays[i].size() < preframesize)
+				{
+					preDistsArrays[i].emplace_back(distance);
+				}
+				else
+				{
+					//pop front
+					assert(!preDistsArrays[i].empty());
+					preDistsArrays[i].erase(preDistsArrays[i].begin());
+					//push back
+					preDistsArrays[i].emplace_back(distance);
+				}
 			}
 
 
@@ -636,7 +667,40 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			return info;
 #endif
 		}
-		else return 0;
+		else 
+		{
+			cv::Mat initialRt = (cv::Mat_<double>(4, 4) << initialR.at<double>(0,0), initialR.at<double>(0,1), initialR.at<double>(0,2), initialT.at<double>(0,0),
+																			initialR.at<double>(1,0), initialR.at<double>(1,1), initialR.at<double>(1,2), initialT.at<double>(1,0),
+																			initialR.at<double>(2,0), initialR.at<double>(2,1), initialR.at<double>(2,2), initialT.at<double>(2,0),
+																			0, 0, 0, 1);
+
+			//距離だけ初期値で算出
+			for(int i = 0; i < projPoints.size(); i++)
+			{
+				// 2次元(プロジェクタ画像)平面へ投影
+				cv::Mat wp = (cv::Mat_<double>(4, 1) << reconstructPoints_valid[indices[i][0]].x, reconstructPoints_valid[indices[i][0]].y, reconstructPoints_valid[indices[i][0]].z, 1);
+				cv::Mat dst_p = projK_34 * initialRt * wp;
+				cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
+				double distance = sqrt(pow(projPoints[i].x - pt.x, 2) + pow(projPoints[i].y - pt.y, 2));
+				preDists[i] = distance;
+
+				//arraysへの値の代入(MAXが30で、後ろからいれる・前のを押し出す)
+				if(preDistsArrays[i].size() < preframesize)
+				{
+					preDistsArrays[i].emplace_back(distance);
+				}
+				else
+				{
+					//pop front
+					assert(!preDistsArrays[i].empty());
+					preDistsArrays[i].erase(preDistsArrays[i].begin());
+					//push back
+					preDistsArrays[i].emplace_back(distance);
+				}
+			}
+
+				return 0;
+		}
 }
 
 

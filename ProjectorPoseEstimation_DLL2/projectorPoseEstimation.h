@@ -75,6 +75,12 @@ public:
 	//1フレーム前の対応点間距離
 	std::vector<double> preDists;
 
+
+	//過去30？フレーム分の対応点間距離
+	std::vector<std::vector<double>> preDistsArrays;
+	int preframesize;
+	int sum;
+
 	//処理時間計測
 	CFileTime cTimeStart, cTimeEnd;
 	CFileTimeSpan cTimeSpan;
@@ -103,7 +109,22 @@ public:
 
 		//1フレーム前の対応点間距離の初期化
 		for(int i = 0; i < projectorImageCorners.size(); i++)
+		{
 			preDists.emplace_back(0.0);
+		}
+
+		std::vector<double> array;
+		array.clear();
+		for(int i = 0; i < projectorImageCorners.size(); i++)
+		{
+			preDistsArrays.emplace_back(array);
+		}
+		preframesize = 20;
+		//sum計算
+		for(int i = 0; i < preframesize; i++)
+			sum += i;
+
+
 
 		//コーナー検出の場合
 		//TODO:プロジェクタ画像上のコーナー点を求めておく
