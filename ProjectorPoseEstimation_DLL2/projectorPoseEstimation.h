@@ -7,7 +7,6 @@
 #include "NonLinearOptimization.h"
 #include "KalmanFilter.h"
 
-
 #include <opencv2/opencv.hpp>
 #include <random>
 
@@ -124,10 +123,6 @@ public:
 		sum = 0;
 		for(int i = 0; i < preframesize; i++)
 			sum += i;
-
-		std::string logAve = "sum=" + std::to_string(sum);
-		debug_log(logAve);
-
 
 		//コーナー検出の場合
 		//TODO:プロジェクタ画像上のコーナー点を求めておく

@@ -383,6 +383,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				distAve /= sum;
 			}
 
+			std::string logSum = "sum=" + std::to_string(sum);
+			debug_log(logSum);
+
+			debug_log(std::to_string(preDistsArrays[i].size()));
+
 			std::string logAve ="distAve[" + std::to_string(i) + "]: " + std::to_string(distAve);
 			debug_log(logAve);
 
