@@ -121,9 +121,12 @@ public:
 		}
 		preframesize = 20;
 		//sum計算
+		sum = 0;
 		for(int i = 0; i < preframesize; i++)
 			sum += i;
 
+		std::string logAve = "sum=" + std::to_string(sum);
+		debug_log(logAve);
 
 
 		//コーナー検出の場合

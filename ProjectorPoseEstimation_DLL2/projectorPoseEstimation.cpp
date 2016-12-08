@@ -378,13 +378,13 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				//重みつけ平均
 				for(int j = 0; j < preframesize; j++)
 				{
-					distAve += ((preframesize - j) * preDistsArrays[i][j]); //新しいものほど重みを軽くする
+					distAve += ((preframesize - 1 - j) * preDistsArrays[i][j]); //新しいものほど重みを軽くする
 				}
 				distAve /= sum;
 			}
 
-			//std::string logAve = std::to_string(distAve);
-			//debug_log(logAve);
+			std::string logAve ="distAve[" + std::to_string(i) + "]: " + std::to_string(distAve);
+			debug_log(logAve);
 
 			//double distance = dists[i][0];
 //			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
