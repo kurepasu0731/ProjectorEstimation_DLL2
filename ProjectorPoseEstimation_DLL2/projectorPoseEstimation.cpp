@@ -383,13 +383,13 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				distAve /= sum;
 			}
 
-			std::string logSum = "sum=" + std::to_string(sum);
-			debug_log(logSum);
+			//std::string logSum = "sum=" + std::to_string(sum);
+			//debug_log(logSum);
 
-			debug_log(std::to_string(preDistsArrays[i].size()));
+			//debug_log(std::to_string(preDistsArrays[i].size()));
 
-			std::string logAve ="distAve[" + std::to_string(i) + "]: " + std::to_string(distAve);
-			debug_log(logAve);
+			//std::string logAve ="[" + std::to_string(i) + "]: " + std::to_string(distAve);
+			//debug_log(logAve);
 
 			//double distance = dists[i][0];
 //			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
@@ -1228,7 +1228,7 @@ int ProjectorEstimation::calcParameters(vector<cv::Point2f> src_p, vector<cv::Po
 	LevenbergMarquardt<NumericalDiff<misra1a_functor> > lm(numDiff);
 
 	//最適化
-	info = lm.minimize(initial);
+	info = lm.minimize(initial);//->ここが重い
     
 	//出力
 	//回転
@@ -1350,7 +1350,6 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 					break;
 				}
 				iterate++;
-
 			}
 		}
 		//debug_log(std::to_string(maxpercentage) + "%");
@@ -1358,7 +1357,7 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 
 		//5. inlierで再度パラメータを求める
 		cv::Mat final_R, final_T;
-		int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T);
+		int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T); //->ここめっちゃかかる(21~26ms)
 
 		//対応点の様子を描画
 		projection_P.clear();
