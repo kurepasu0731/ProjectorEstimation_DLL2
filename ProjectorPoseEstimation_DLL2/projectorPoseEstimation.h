@@ -74,6 +74,9 @@ public:
 	//1フレーム前の対応点間距離
 	std::vector<double> preDists;
 
+	//指数平滑法用1フレーム前のdt^
+	std::vector<double> preExpoDists;
+
 
 	//過去30？フレーム分の対応点間距離
 	std::vector<std::vector<double>> preDistsArrays;
@@ -94,8 +97,7 @@ public:
 		projector = new WebCamera(prowidth, proheight);
 		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
-		kf.initKalmanfilter(6, 3, 0, 1);//等速度
-		//kf.initKalmanfilter(9, 3, 0, 1);//等加速度
+		kf.initKalmanfilter(18, 6, 0, 0.03);//等速度
 
 		//プロジェクタ画像読み込み,描画用画像作成
 		proj_img = cv::imread(backgroundImgFile);
@@ -110,6 +112,7 @@ public:
 		for(int i = 0; i < projectorImageCorners.size(); i++)
 		{
 			preDists.emplace_back(0.0);
+			preExpoDists.emplace_back(0.0);
 		}
 
 		std::vector<double> array;

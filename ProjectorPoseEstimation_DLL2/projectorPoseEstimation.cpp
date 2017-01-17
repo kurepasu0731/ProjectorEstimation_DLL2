@@ -367,10 +367,14 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		//有効なプロジェクタ画像上の対応点
 		std::vector<cv::Point2f> projPoints_valid;
 
-		
-		//対応点間の距離が閾値以上離れていたら、外れ値として除去
-		for(int i = 0; i < projPoints.size(); i++){
+		//**指数平滑用定数**//
+		double a = 0.45; //a > 1 -> 過去ほど重く　a < 1 ->過去ほど軽く
 
+		//対応点間の距離が閾値以上離れていたら、外れ値として除去
+		for(int i = 0; i < projPoints.size(); i++)
+		{
+
+			//**過去preframesizeフレームの加重平均**//
 			double distAve = 0;
 			//arrayが30貯まっていてかつ、それらの重みつけ平均が閾値以上なら、対応点として追加
 			if(preDistsArrays[i].size() == preframesize)
@@ -383,19 +387,33 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				distAve /= sum;
 			}
 
-			//std::string logSum = "sum=" + std::to_string(sum);
+			////**指数平滑法**//
+			//double expodist = 0.0;
+			//double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
+			////t=0のときはdt^ = dt
+			//if(preExpoDists[i] == 0.0)
+			//{
+			//	expodist = distance;
+			//}
+			//else
+			//{
+			//	expodist = a * distance + (1/(1 - a)) * preExpoDists[i];
+			//	expodist /= 100;
+			//}
+			//preExpoDists[i] = expodist;
+
+			//std::string logSum = "expo:" + std::to_string(preExpoDists[i]);
 			//debug_log(logSum);
-
 			//debug_log(std::to_string(preDistsArrays[i].size()));
-
 			//std::string logAve ="[" + std::to_string(i) + "]: " + std::to_string(distAve);
 			//debug_log(logAve);
 
 			//double distance = dists[i][0];
 //			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
 //			if( distance <= thresh + 10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
-			//if( distance <= thresh)
-			if(distAve <= thresh && preDistsArrays[i].size() == preframesize)
+			//if( distance <= thresh) //単純
+//		if(expodist <= thresh)//指数平滑法
+			if(distAve <= thresh && preDistsArrays[i].size() == preframesize)//加重平均
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
 				imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
@@ -444,20 +462,20 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 				//--予測あり--//
 				cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
-				//cv::Mat rotation_measured = (cv::Mat_<double>(3, 3) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2),_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2));
-				cv::Mat measurement(3, 1, CV_64F);
-				//kf.fillMeasurements(measurement, translation_measured, rotation_measured);
-				kf.fillMeasurements(measurement, translation_measured);
+				cv::Mat rotation_measured = (cv::Mat_<double>(3, 3) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2),_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2));
+				cv::Mat measurement(6, 1, CV_64F);
+				measurement.setTo(cv::Scalar(0));
+
+				kf.fillMeasurements(measurement, translation_measured, rotation_measured);
 				// Instantiate estimated translation and rotation
 				cv::Mat translation_estimated(3, 1, CV_64F);
-				//cv::Mat rotation_estimated(3, 3, CV_64F);
+				cv::Mat rotation_estimated(3, 3, CV_64F);
 				// update the Kalman filter with good measurements
-				//kf.updateKalmanfilter(measurement, translation_estimated, rotation_estimated);
-				kf.updateKalmanfilter(measurement, translation_estimated);
+				kf.updateKalmanFilter(measurement, translation_estimated, rotation_estimated);
 				cv::Mat _dstT_kf = (cv::Mat_<double>(3, 1) << translation_estimated.at<double>(0, 0), translation_estimated.at<double>(1, 0), translation_estimated.at<double>(2, 0));
-				//cv::Mat _dstR_kf = (cv::Mat_<double>(3, 3) << rotation_estimated.at<double>(0, 0), rotation_estimated.at<double>(0, 1), rotation_estimated.at<double>(0, 2), rotation_estimated.at<double>(1, 0), rotation_estimated.at<double>(1, 1), rotation_estimated.at<double>(1, 2), rotation_estimated.at<double>(2, 0), rotation_estimated.at<double>(2, 1), rotation_estimated.at<double>(2, 2));
+				cv::Mat _dstR_kf = (cv::Mat_<double>(3, 3) << rotation_estimated.at<double>(0, 0), rotation_estimated.at<double>(0, 1), rotation_estimated.at<double>(0, 2), rotation_estimated.at<double>(1, 0), rotation_estimated.at<double>(1, 1), rotation_estimated.at<double>(1, 2), rotation_estimated.at<double>(2, 0), rotation_estimated.at<double>(2, 1), rotation_estimated.at<double>(2, 2));
 				_dstT_kf.copyTo(_dstT);
-				//_dstR_kf.copyTo(_dstR);
+				_dstR_kf.copyTo(_dstR);
 
 				//stopTic("Kalman");
 
