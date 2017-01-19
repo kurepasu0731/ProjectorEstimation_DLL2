@@ -1265,6 +1265,59 @@ int ProjectorEstimation::calcParameters(vector<cv::Point2f> src_p, vector<cv::Po
 	return info;
 }
 
+//Ceres Solver Version(マイナス30msくらいになった！！！)
+int ProjectorEstimation::calcParameters_Ceres(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT)
+{
+	////回転行列からクォータニオンにする
+	//cv::Mat initialR_tr = initialR.t();//関数の都合上転置
+	//double w, x, y, z;
+	//transformRotMatToQuaternion(x, y, z, w, initialR_tr.at<double>(0, 0), initialR_tr.at<double>(0, 1), initialR_tr.at<double>(0, 2), 
+	//															initialR_tr.at<double>(1, 0), initialR_tr.at<double>(1, 1), initialR_tr.at<double>(1, 2), 
+	//															initialR_tr.at<double>(2, 0), initialR_tr.at<double>(2, 1), initialR_tr.at<double>(2, 2)); 		
+	//double camera[6] = {x, y, z, initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0) };
+	
+	//回転行列からオイラーにする
+	cv::Mat initial_euler = rot2euler(initialR);
+	double camera[6] = {initial_euler.at<double>(0, 0), initial_euler.at<double>(1, 0), initial_euler.at<double>(2, 0), initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0) };
+
+
+	ceres::Problem problem;
+	for(int i = 0; i < src_p.size(); i++)
+	{
+
+		cv::Point2d p(src_p[i].x, src_p[i].y);
+		cv::Point3d P(src_P[i].x, src_P[i].y, src_P[i].z);
+		CostFunction* cost = new AutoDiffCostFunction<ErrorFunction, 2, 6>(new ErrorFunction(p, P, projK_34));
+		problem.AddResidualBlock(cost, NULL, camera);
+	}
+
+	ceres::Solver::Options options;
+	options.linear_solver_type = ceres::DENSE_QR;
+	options.minimizer_progress_to_stdout = false;
+	ceres::Solver::Summary summary;
+	ceres::Solve(options, &problem, &summary);
+
+	//Quaterniond q(0, camera[0], camera[1], camera[2]);
+	//q.w () = static_cast<double> (sqrt (1 - q.dot (q)));
+	//q.normalize ();
+	//MatrixXd qMat = q.toRotationMatrix();
+	//cv::Mat _dstR = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
+
+	//出力
+	//回転
+	cv::Mat dst_euler = (cv::Mat_<double>(3, 1) << camera[0], camera[1], camera[2]);
+	cv::Mat _dstR = euler2rot(dst_euler);
+
+	//並進
+	cv::Mat _dstT = (cv::Mat_<double>(3, 1) << camera[3], camera[4], camera[5]);
+
+	_dstR.copyTo(dstR);
+	_dstT.copyTo(dstT);
+
+	return summary.IsSolutionUsable();
+}
+
+
 //3次元点のプロジェクタ画像への射影と再投影誤差の計算
 void ProjectorEstimation::calcReprojectionErrors(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat R, cv::Mat T, vector<cv::Point2d>& projection_P, vector<double>& errors){
 	//対応点の様子を描画
@@ -1321,7 +1374,8 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 
 			//2. num点でパラメータを求める			
 			cv::Mat preR, preT;//仮パラメータ
-			int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
+			int result = calcParameters_Ceres(random_p, random_P, initialR, initialT, preR, preT);
+			//int result = calcParameters(random_p, random_P, initialR, initialT, preR, preT);
 
 			//debug_log(std::to_string(result));
 
@@ -1375,7 +1429,9 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 
 		//5. inlierで再度パラメータを求める
 		cv::Mat final_R, final_T;
-		int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T); //->ここめっちゃかかる(21~26ms)
+		//debug_log("final");
+		int result = calcParameters_Ceres(inlier_p, inlier_P, initialR, initialT, final_R, final_T); //->ここめっちゃかかる(21~26ms)
+		//int result = calcParameters(inlier_p, inlier_P, initialR, initialT, final_R, final_T); //->ここめっちゃかかる(21~26ms)
 
 		//対応点の様子を描画
 		projection_P.clear();
