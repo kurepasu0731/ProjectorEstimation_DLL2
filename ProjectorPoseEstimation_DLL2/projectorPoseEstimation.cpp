@@ -243,6 +243,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		//有効なプロジェクタ画像上の対応点
 		std::vector<cv::Point2f> projPoints_valid;
 
+		//startTic();
+
 		///////↓↓対応点の選択↓↓///////
 
 		//**指数平滑用定数**//
@@ -304,6 +306,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 		///////↑↑対応点の選択↑↑///////
 
+		//stopTic("serect:");
+
 		//はじかれた対応点も全部描画
 		for(int i = 0; i < projPoints.size(); i++)
 		{	
@@ -360,6 +364,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			}
 
+			//startTic();
+
 			///////↓↓動き予測↓↓///////
 			// 回転
 			glm::mat4 rotation( _dstR.at<double>(0, 0), _dstR.at<double>(1,0), _dstR.at<double>(2,0), 0.0f,
@@ -391,6 +397,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				firstTime = false;
 			}
+
+			//stopTic("predict");
 
 			///////↑↑動き予測↑↑///////
 
@@ -439,6 +447,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			////プロジェクタ画像の対応点が何％対応付けられているかの割合(％)
 			//double percent = (projPoints_valid.size() * 100) / projPoints.size();
 
+			//startTic();
+
 			///////↓↓対応点間距離の更新↓↓///////
 			//全点の対応点との距離(preDists)を更新
 			//4*4行列にする
@@ -470,6 +480,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				}
 			}
 			///////↑↑対応点間距離の更新↑↑///////
+
+			//stopTic("serect2");
 
 			_dstR.copyTo(dstR);
 			_dstT.copyTo(dstT);
