@@ -6,8 +6,8 @@
 #include "WebCamera.h"
 #include "NonLinearOptimization.h"
 #include "KalmanFilter.h"
-//#include "SnavelyReprojectionError.h"
 #include "ErrorFunction.h"
+
 
 #include <opencv2/opencv.hpp>
 #include <random>
@@ -27,7 +27,9 @@
 #include<string>
 #include<sstream> //文字ストリーム
 
-
+#include "LSM/LSMPoint3f.h"
+#include "LSM/LSMQuatd.h"
+#include "myTimer.h"
 
 //#define DLLExport __declspec (dllexport)
 
@@ -79,12 +81,18 @@ public:
 	//指数平滑法用1フレーム前のdt^
 	std::vector<double> preExpoDists;
 
-
 	//過去preframesizeフレーム分の対応点間距離
 	std::vector<std::vector<double>> preDistsArrays;
 	//どのくらい過去の情報までみるかのフレーム数
 	int preframesize;
 	int sum;
+
+	//動き予測関連//
+	double trackingTime;		// トラッキングにかかる時間
+	std::unique_ptr<LSMPoint3f> predict_point;	// 位置の最小二乗法
+	std::unique_ptr<LSMQuatd> predict_quat;		// 姿勢の最小二乗法
+	bool firstTime;								// 1回目かどうか
+	MyTimer timer;				// 起動時間からの時間計測
 
 	//処理時間計測
 	CFileTime cTimeStart, cTimeEnd;
@@ -94,7 +102,7 @@ public:
 	bool detect_proj; //プロジェクタ画像のコーナー点を検出したかどうか
 
 	//コンストラクタ
-	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
+	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, double trackingtime, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 	{
 		camera = new WebCamera(camwidth, camheight);
 		projector = new WebCamera(prowidth, proheight);
@@ -133,6 +141,16 @@ public:
 		//コーナー検出の場合
 		//TODO:プロジェクタ画像上のコーナー点を求めておく
 		detect_proj = false;
+
+		//動き予測関連//
+		predict_point = std::unique_ptr<LSMPoint3f> (new LSMPoint3f(LSM));
+		predict_quat = std::unique_ptr<LSMQuatd> (new LSMQuatd(LSM));
+		predict_point->setForgetFactor(0.6);	// 忘却係数
+		predict_quat->setForgetFactor(0.6);	// 忘却係数
+		firstTime = true;
+		trackingTime = trackingtime;//処理時間＋システム遅延
+		timer = MyTimer();
+		timer.start();
 	};
 
 	~ProjectorEstimation(){};
@@ -149,7 +167,7 @@ public:
 													   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 													   double thresh, 
 													   int mode,
-													   bool isKalman,
+													   bool isKalman, bool isPredict,
 													   //double C, int dotsMin, int dotsMax, float resizeScale,
 													   cv::Mat &draw_camimage, cv::Mat &draw_projimage);
 
@@ -175,7 +193,7 @@ public:
 
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
-	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman,
+	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat &draw_camimage, cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)
@@ -227,28 +245,4 @@ private:
 
 	void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p);
 };
-
-/*
-extern "C" {
-	//ProjectorEstimationインスタンス生成
-	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset, double _thresh); 
-
-	//パラメータファイル、3次元復元ファイル読み込み
-	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);
-
-	//プロジェクタ位置推定コア呼び出し
-	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data, unsigned char* prj_data, 
-																	double initR[], double initT[], double dstR[], double dstT[],
-																	int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, int mode);
-	//ウィンドウ破棄
-	DLLExport void destroyAllWindows()
-	{
-		cv::destroyAllWindows();
-	};
-
-	//カメラ画像用マスクの作成
-	DLLExport void createCameraMask(void* projectorestimation, unsigned char* cam_data);
-
-}
-*/
 #endif

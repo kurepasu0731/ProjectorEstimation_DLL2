@@ -153,6 +153,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Kalmanfilter.cpp" />
+    <ClCompile Include="LSM\LeastSquaresMethod.cpp" />
+    <ClCompile Include="LSM\LeastSquaresMethodQuadratic.cpp" />
+    <ClCompile Include="LSM\LSMPoint3f.cpp" />
+    <ClCompile Include="LSM\LSMQuatd.cpp" />
     <ClCompile Include="projectorPoseEstimation.cpp" />
     <ClCompile Include="wrapperForUnity.cpp" />
   </ItemGroup>
@@ -160,6 +164,11 @@
     <ClInclude Include="ErrorFunction.h" />
     <ClInclude Include="DebugLogWrapper.h" />
     <ClInclude Include="KalmanFilter.h" />
+    <ClInclude Include="LSM\LeastSquaresMethod.h" />
+    <ClInclude Include="LSM\LeastSquaresMethodQuadratic.h" />
+    <ClInclude Include="LSM\LSMPoint3f.h" />
+    <ClInclude Include="LSM\LSMQuatd.h" />
+    <ClInclude Include="myTimer.h" />
     <ClInclude Include="NonLinearOptimization.h" />
     <ClInclude Include="projectorPoseEstimation.h" />
     <ClInclude Include="WebCamera.h" />

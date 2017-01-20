@@ -1,9 +1,9 @@
 #include "wrapperForUnity.h"
 
 
-DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
+DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, double trackingtime, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
 {
-	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset));	
+	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, trackingtime, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset));	
 }
 
 //パラメータファイル、3次元復元ファイル読み込み
@@ -38,7 +38,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 																//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																double thresh, 
 																int mode, 
-																bool isKalman)
+																bool isKalman, bool isPredict)
 																//double C, int dotsMin, int dotsMax, float resizeScale)
 {
 	auto pe = static_cast<ProjectorEstimation*>(projectorestimation);
@@ -90,7 +90,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned 
 		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner( pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, thresh, mode, isKalman, cam_img, proj_drawing);
+			result = pe->findProjectorPose_Corner( pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, thresh, mode, isKalman, isPredict, cam_img, proj_drawing);
 			//result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, resizeScale, cam_img, proj_drawing);
 		else
 			result = false;
