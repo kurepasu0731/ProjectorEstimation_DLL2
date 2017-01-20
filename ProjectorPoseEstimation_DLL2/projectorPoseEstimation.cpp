@@ -382,7 +382,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				//重みつけ平均
 				for(int j = 0; j < preframesize; j++)
 				{
-					distAve += ((preframesize - 1 - j) * preDistsArrays[i][j]); //新しいものほど重みを軽くする
+					distAve += ((j + 1) * preDistsArrays[i][j]); //新しいものほど重みを重くする(<-こっちのほうがよさそう)
+					//distAve += ((preframesize - j) * preDistsArrays[i][j]); //新しいものほど重みを軽くする
 				}
 				distAve /= sum;
 			}
@@ -397,8 +398,9 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//}
 			//else
 			//{
-			//	expodist = a * distance + (1/(1 - a)) * preExpoDists[i];
-			//	expodist /= 100;
+			//	//expodist = a * distance + (1 - a) * preExpoDists[i];//普通の指数平滑法
+			//	expodist = a * distance + (1/(1 - a)) * preExpoDists[i]; //過去ほど重くする逆指数平滑法
+			//	expodist /= 100; //なんか違うような気がする
 			//}
 			//preExpoDists[i] = expodist;
 
@@ -411,7 +413,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			//double distance = dists[i][0];
 //			double distance = sqrt(pow(projPoints[i].x - ppt[indices[i][0]].x, 2) + pow(projPoints[i].y - ppt[indices[i][0]].y, 2));
 //			if( distance <= thresh + 10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
-			//if( distance <= thresh) //単純
+//			if( distance <= thresh) //単純
 //		if(expodist <= thresh)//指数平滑法
 			if(distAve <= thresh && preDistsArrays[i].size() == preframesize)//加重平均
 			{
@@ -1277,7 +1279,7 @@ int ProjectorEstimation::calcParameters_Ceres(vector<cv::Point2f> src_p, vector<
 	//double camera[6] = {x, y, z, initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0) };
 	
 	//回転行列からオイラーにする
-	cv::Mat initial_euler = rot2euler(initialR);
+	cv::Mat initial_euler = kf.rot2euler(initialR); 
 	double camera[6] = {initial_euler.at<double>(0, 0), initial_euler.at<double>(1, 0), initial_euler.at<double>(2, 0), initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0) };
 
 
@@ -1306,7 +1308,7 @@ int ProjectorEstimation::calcParameters_Ceres(vector<cv::Point2f> src_p, vector<
 	//出力
 	//回転
 	cv::Mat dst_euler = (cv::Mat_<double>(3, 1) << camera[0], camera[1], camera[2]);
-	cv::Mat _dstR = euler2rot(dst_euler);
+	cv::Mat _dstR = kf.euler2rot(dst_euler);
 
 	//並進
 	cv::Mat _dstT = (cv::Mat_<double>(3, 1) << camera[3], camera[4], camera[5]);
