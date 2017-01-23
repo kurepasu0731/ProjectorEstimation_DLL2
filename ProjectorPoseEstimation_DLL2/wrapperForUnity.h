@@ -15,7 +15,7 @@ extern "C" {
 	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);
 
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
-	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, unsigned char* cam_data,
+	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigned char* cam_data,*/
 																	int dotsCount, int dots_data[],
 																	double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
 																	//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 

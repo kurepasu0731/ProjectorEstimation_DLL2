@@ -169,7 +169,7 @@ public:
 													   int mode,
 													   bool isKalman, bool isPredict,
 													   //double C, int dotsMin, int dotsMax, float resizeScale,
-													   cv::Mat &draw_camimage, cv::Mat &draw_projimage);
+													   /*cv::Mat &draw_camimage,*/ cv::Mat &draw_projimage);
 
 	//チェッカボード検出によるプロジェクタ位置姿勢を推定
 	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
@@ -194,7 +194,7 @@ public:
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
 	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
-												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat &draw_camimage, cv::Mat &chessimage);
+												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, /*cv::Mat &draw_camimage,*/ cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)
 	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 

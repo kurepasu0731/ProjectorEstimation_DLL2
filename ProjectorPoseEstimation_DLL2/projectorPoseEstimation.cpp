@@ -43,7 +43,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 												   int mode,
 												   bool isKalman, bool isPredict,
 												   //double C, int dotsMin, int dotsMax, float resizeScale,
-												   cv::Mat &draw_camimage, cv::Mat &draw_projimage)
+												   /*cv::Mat &draw_camimage,*/ cv::Mat &draw_projimage)
 {
 	//処理時間計測
 	CFileTime cTimeStart_, cTimeEnd_;
@@ -107,11 +107,15 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 
 		int result = 0;
 		if(mode == 1 || mode == 4)//こっちしか機能してない
+		{
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, draw_camimage, draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, /*draw_camimage,*/ draw_projimage);
+		}
 		else if(mode == 2)
+		{
 			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
+//			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
+		}
 
 		_dstR.copyTo(dstR);
 		_dstT.copyTo(dstT);
@@ -137,7 +141,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 
 //計算部分
 int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
-																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat &draw_camimage, cv::Mat &chessimage)
+																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, /*cv::Mat &draw_camimage,*/ cv::Mat &chessimage)
 {
 
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
@@ -163,7 +167,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			else
 			{
 				//カメラ画像に描画
-				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
+//				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
+
 				//std::string stx = "x: ";
 				//debug_log(stx);
 				//debug_log(std::to_string(reconstructPoints[i].x));
@@ -435,7 +440,7 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				cv::circle(chessimage,pp, 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
 				cv::circle(chessimage, cp, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測あり)は青
 				//描画(カメラ画像)
-				cv::circle(draw_camimage, icp, 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
+//				cv::circle(draw_camimage, icp, 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
 
 				//線で結ぶ
 				cv::line(chessimage, pp, cp, cv::Scalar(255, 0, 255), 4);//ピンク(太)
