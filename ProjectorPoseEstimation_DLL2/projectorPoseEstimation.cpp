@@ -37,6 +37,7 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
 bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
+												    cv::Mat &dstR_predict, cv::Mat &dstT_predict,
 												   int dotsCount, int dots_data[],
 												   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 												   double thresh, 
@@ -105,11 +106,16 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 		cv::Mat _dstT = cv::Mat::zeros(3,1,CV_64F);
 		cv::Mat  _error = cv::Mat::zeros(1,1,CV_64F);
 
+		//予測値
+		cv::Mat _dstR_predict = cv::Mat::eye(3,3,CV_64F);
+		cv::Mat _dstT_predict = cv::Mat::zeros(3,1,CV_64F);
+
+
 		int result = 0;
 		if(mode == 1 || mode == 4)//こっちしか機能してない
 		{
 			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, /*draw_camimage,*/ draw_projimage);
+			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, _dstR_predict, _dstT_predict, /*draw_camimage,*/ draw_projimage);
 		}
 		else if(mode == 2)
 		{
@@ -120,6 +126,9 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 		_dstR.copyTo(dstR);
 		_dstT.copyTo(dstT);
 		_error.copyTo(error);
+
+		_dstR_predict.copyTo(dstR_predict);
+		_dstT_predict.copyTo(dstT_predict);
 
 		//stopTic("calcConer1");
 
@@ -141,7 +150,8 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 
 //計算部分
 int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
-																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, /*cv::Mat &draw_camimage,*/ cv::Mat &chessimage)
+																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat& dstR_predict, cv::Mat& dstT_predict,
+																		/*cv::Mat &draw_camimage,*/ cv::Mat &chessimage)
 {
 
 		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
@@ -371,7 +381,9 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			//startTic();
 
-			///////↓↓動き予測↓↓///////
+			///////↓↓動き予測↓↓///////.
+			//予測値
+			cv::Mat _dstR_predict, _dstT_predict;
 			// 回転
 			glm::mat4 rotation( _dstR.at<double>(0, 0), _dstR.at<double>(1,0), _dstR.at<double>(2,0), 0.0f,
 								_dstR.at<double>(0,1), _dstR.at<double>(1,1), _dstR.at<double>(2,1), 0.0f,
@@ -393,10 +405,13 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			// 予測フィルタ使用時
 			if (isPredict && !firstTime)
 			{
-				_dstT = (cv::Mat_<double>(3, 1) << predictPose[3][0], predictPose[3][1], predictPose[3][2]);
-				_dstR = (cv::Mat_<double>(3, 3) << predictPose[0][0], predictPose[1][0], predictPose[2][0],
+				_dstT_predict = (cv::Mat_<double>(3, 1) << predictPose[3][0], predictPose[3][1], predictPose[3][2]);
+				_dstR_predict = (cv::Mat_<double>(3, 3) << predictPose[0][0], predictPose[1][0], predictPose[2][0],
 												   predictPose[0][1], predictPose[1][1], predictPose[2][1], 
 												   predictPose[0][2], predictPose[1][2], predictPose[2][2]);
+				_dstT_predict.copyTo(dstT_predict);
+				_dstR_predict.copyTo(dstR_predict);
+
 			}
 			else
 			{

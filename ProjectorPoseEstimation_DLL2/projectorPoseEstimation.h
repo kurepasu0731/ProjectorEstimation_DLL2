@@ -163,6 +163,7 @@ public:
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
 	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
+														cv::Mat &dstR_predict, cv::Mat &dstT_predict,
 													   int dotsCount, int dots_data[],
 													   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 													   double thresh, 
@@ -194,7 +195,8 @@ public:
 private:
 	//計算部分(プロジェクタ点の最近棒を探索する)
 	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
-												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, /*cv::Mat &draw_camimage,*/ cv::Mat &chessimage);
+												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat& dstR_predict, cv::Mat& dstT_predict,
+												/*cv::Mat &draw_camimage,*/ cv::Mat &chessimage);
 
 	//計算部分(カメラ点(3次元点)の最近傍を探索する)
 	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 

@@ -35,6 +35,7 @@ DLLExport void callloadParam(void* projectorestimation, double initR[], double i
 DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigned char* cam_data,*/ 
 																int dotsCount, int dots_data[],
 																double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
+																double _dstR_predict[], double _dstT_predict[],
 																//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																double thresh, 
 																int mode, 
@@ -57,6 +58,11 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigne
 	cv::Mat dstR = cv::Mat::eye(3,3,CV_64F);
 	cv::Mat dstT = cv::Mat::zeros(3,1,CV_64F);
 	cv::Mat error = cv::Mat::zeros(1,1,CV_64F);
+
+	//ó\ë™íl
+	cv::Mat dstR_predict = cv::Mat::eye(3,3,CV_64F);
+	cv::Mat dstT_predict = cv::Mat::zeros(3,1,CV_64F);
+
 
 //	cv::Mat cam_drawimg = cam_img.clone();
 	cv::Mat proj_drawing;
@@ -90,7 +96,7 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigne
 		}
 
 		if(pe->detect_proj == true)
-			result = pe->findProjectorPose_Corner( pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, thresh, mode, isKalman, isPredict, /*cam_img,*/ proj_drawing);
+			result = pe->findProjectorPose_Corner( pe->proj_img, initR, initT, dstR, dstT, error, dstR_predict, dstT_predict, dotsCount, dots_data, thresh, mode, isKalman, isPredict, /*cam_img,*/ proj_drawing);
 			//result = pe->findProjectorPose_Corner(cam_img, pe->proj_img, initR, initT, dstR, dstT, error, dotsCount, dots_data, camCornerNum, camMinDist, projCornerNum, projMinDist, thresh, mode, isKalman, C, dotsMin, dotsMax, resizeScale, cam_img, proj_drawing);
 		else
 			result = false;
@@ -113,6 +119,22 @@ DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigne
 		_dstT[1] = dstT.at<double>(1, 0);
 		_dstT[2] = dstT.at<double>(2, 0);
 		aveError[0] = error.at<double>(0, 0);
+
+		//êÑíËåãâ Çäiî[
+		_dstR_predict[0] = dstR_predict.at<double>(0,0);
+		_dstR_predict[1] = dstR_predict.at<double>(0,1);
+		_dstR_predict[2] = dstR_predict.at<double>(0,2);
+		_dstR_predict[3] = dstR_predict.at<double>(1,0);
+		_dstR_predict[4] = dstR_predict.at<double>(1,1);
+		_dstR_predict[5] = dstR_predict.at<double>(1,2);
+		_dstR_predict[6] = dstR_predict.at<double>(2,0);
+		_dstR_predict[7] = dstR_predict.at<double>(2,1);
+		_dstR_predict[8] = dstR_predict.at<double>(2,2);
+
+		_dstT_predict[0] = dstT_predict.at<double>(0, 0);
+		_dstT_predict[1] = dstT_predict.at<double>(1, 0);
+		_dstT_predict[2] = dstT_predict.at<double>(2, 0);
+
 	}else
 	{
 	}
