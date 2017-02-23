@@ -24,13 +24,6 @@ extern "C"
     {
         debug_log_func = func;
 		counter = 0;
-    }
-    
-    DLLExport void debug_log_test()
-    {
-		std::string log = "testLog: " + std::to_string(counter);
-        debug_log(log);
-		counter++;
-    }
+    }    
 }
 #endif

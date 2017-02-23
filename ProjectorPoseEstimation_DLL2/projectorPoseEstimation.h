@@ -12,11 +12,6 @@
 #include <opencv2/opencv.hpp>
 #include <random>
 
-//PCL
-//#include <pcl/io/pcd_io.h>
-//#include <pcl/point_types.h>
-//#include <pcl/visualization/pcl_visualizer.h>
-
 #include <flann/flann.hpp>
 #include <boost/shared_array.hpp>
 
@@ -31,8 +26,6 @@
 #include "LSM/LSMQuatd.h"
 #include "myTimer.h"
 
-//#define DLLExport __declspec (dllexport)
-
 
 //using namespace cv;
 using namespace std;
@@ -43,9 +36,6 @@ public:
 	WebCamera* camera;
 	WebCamera* projector;
 	cv::Size checkerPattern;
-
-	std::vector<cv::Point2f> projectorImageCorners; //プロジェクタ画像上の対応点座標(チェッカパターンによる推定の場合)
-	std::vector<cv::Point2f> cameraImageCorners; //カメラ画像上の対応点座標
 
 	//カメラ画像上のコーナー点
 	std::vector<cv::Point2f> camcorners;
@@ -115,28 +105,28 @@ public:
 		proj_undist =  proj_img.clone();
 		cv::undistort(proj_img, proj_undist, projector->cam_K, projector->cam_dist);
 
-		//チェッカパターンによる推定の場合
-		//プロジェクタ画像上の交点座標を求めておく
-		getProjectorImageCorners(projectorImageCorners, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset);
 
-		//1フレーム前の対応点間距離の初期化
-		for(int i = 0; i < projectorImageCorners.size(); i++)
-		{
-			preDists.emplace_back(0.0);
-			preExpoDists.emplace_back(0.0);
-		}
+		////1フレーム前の対応点間距離の初期化
+		//for(int i = 0; i < _checkerCol*_checkerRow; i++)
+		//{
+		//	preDists.emplace_back(0.0);
+		//	preExpoDists.emplace_back(0.0);
+		//}
 
-		std::vector<double> array;
-		array.clear();
-		for(int i = 0; i < projectorImageCorners.size(); i++)
-		{
-			preDistsArrays.emplace_back(array);
-		}
+		//std::vector<double> array;
+		//array.clear();
+		//for(int i = 0; i < _checkerCol*_checkerRow; i++)
+		//{
+		//	preDistsArrays.emplace_back(array);
+		//}
+
 		preframesize = 20; 
 		//sum計算
 		sum = 0;
 		for(int i = 1; i <= preframesize; i++)
+		{
 			sum += i;
+		}
 
 		//コーナー検出の場合
 		//TODO:プロジェクタ画像上のコーナー点を求めておく
@@ -162,21 +152,15 @@ public:
 	void loadReconstructFile(const std::string& filename);
 
 	//コーナー検出によるプロジェクタ位置姿勢を推定
-	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
+	bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, 
+														cv::Mat initialR, cv::Mat initialT, 
+														cv::Mat &dstR, cv::Mat &dstT, 
+														cv::Mat &error,
 														cv::Mat &dstR_predict, cv::Mat &dstT_predict,
-													   int dotsCount, int dots_data[],
-													   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
-													   double thresh, 
-													   int mode,
-													   bool isKalman, bool isPredict,
-													   //double C, int dotsMin, int dotsMax, float resizeScale,
+														int dotsCount, int dots_data[],
+														double thresh, 
+														bool isKalman, bool isPredict,
 													   /*cv::Mat &draw_camimage,*/ cv::Mat &draw_projimage);
-
-	//チェッカボード検出によるプロジェクタ位置姿勢を推定
-	bool findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage);
-
-	//コーナー検出
-	bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
 
 	//処理時間計測・DebugLog表示用
 	void startTic()
@@ -197,36 +181,6 @@ private:
 	int calcProjectorPose_Corner1(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, double thresh, bool isKalman, bool isPredict,
 												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &error, cv::Mat& dstR_predict, cv::Mat& dstT_predict,
 												/*cv::Mat &draw_camimage,*/ cv::Mat &chessimage);
-
-	//計算部分(カメラ点(3次元点)の最近傍を探索する)
-	int calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, 
-												cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage);
-
-	////コーナー検出
-	//bool getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage);
-
-	//各対応点の重心位置を計算
-	void calcAveragePoint(std::vector<cv::Point3f> imageWorldPoints, std::vector<cv::Point2f> projPoints, 
-									cv::Mat R, cv::Mat t, cv::Point2f& imageAve, cv::Point2f& projAve);
-	
-	//チェッカパターンによる推定の場合
-
-	//計算部分(Rの自由度3)
-	int calcProjectorPose(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage);
-
-	//カメラ画像をチェッカパターン検出する
-	bool getCheckerCorners(std::vector<cv::Point2f>& imagePoint, const cv::Mat &image, cv::Mat &draw_image);
-
-	//プロジェクタ画像上の交点座標を求める
-	void getProjectorImageCorners(std::vector<cv::Point2f>& projPoint, int _row, int _col, int _blockSize, int _x_offset, int _y_offset);
-
-	//回転行列→クォータニオン
-	bool transformRotMatToQuaternion(
-		double &qx, double &qy, double &qz, double &qw,
-		double m11, double m12, double m13,
-		double m21, double m22, double m23,
-		double m31, double m32, double m33);
-
 	//ランダムにnum点を抽出
 	void get_random_points(int num, vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, vector<cv::Point2f>& calib_p, vector<cv::Point3f>& calib_P);
 
@@ -241,10 +195,12 @@ private:
 	//対応点からRとTの算出(RANSAC)
 	int calcParameters_RANSAC(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, int num, float thresh, cv::Mat& dstR, cv::Mat& dstT);
 
-	//**ランダムドットマーカー用**//	
-	//ドット検出
-	bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &corners, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage);
+	//回転行列→クォータニオン
+	bool transformRotMatToQuaternion(
+		double &qx, double &qy, double &qz, double &qw,
+		double m11, double m12, double m13,
+		double m21, double m22, double m23,
+		double m31, double m32, double m33);
 
-	void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p);
 };
 #endif

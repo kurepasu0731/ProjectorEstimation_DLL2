@@ -36,50 +36,33 @@ void ProjectorEstimation::loadReconstructFile(const std::string& filename)
 }
 
 //コーナー検出によるプロジェクタ位置姿勢を推定
-bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &error,
-												    cv::Mat &dstR_predict, cv::Mat &dstT_predict,
+bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, 
+												   cv::Mat initialR, cv::Mat initialT, 
+												   cv::Mat &dstR, cv::Mat &dstT, 
+												   cv::Mat &error,
+												   cv::Mat &dstR_predict, cv::Mat &dstT_predict,
 												   int dotsCount, int dots_data[],
-												   //int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 												   double thresh, 
-												   int mode,
 												   bool isKalman, bool isPredict,
-												   //double C, int dotsMin, int dotsMax, float resizeScale,
 												   /*cv::Mat &draw_camimage,*/ cv::Mat &draw_projimage)
 {
-	//処理時間計測
-	CFileTime cTimeStart_, cTimeEnd_;
-	CFileTimeSpan cTimeSpan_;
-
-	//cTimeStart_ = CFileTime::GetCurrentTime();// 現在時刻
-
 	//startTic();
-
-	bool detect_cam = false;
-	if(mode == 4)
+	//ドット配列をvectorにする
+	camcorners.clear();
+	for(int i = 0; i < dotsCount*2; i+=2)
 	{
-		//cv::Mat src;
-		//cv::cvtColor(camframe, src, CV_BGR2GRAY);
-		////src = camframe.clone(); //PGR
-		//detect_cam = getDots(src, camcorners, C, dotsMin, dotsMax, resizeScale, draw_camimage);
-
-		//ドット配列をvectorにする
-		camcorners.clear();
-		for(int i = 0; i < dotsCount*2; i+=2)
-		{
-			camcorners.emplace_back(cv::Point2f(dots_data[i], dots_data[i+1]));
-		}
-
-		if(camcorners.size() > 0) detect_cam = true;
-		else detect_cam = false;
+		camcorners.emplace_back(cv::Point2f(dots_data[i], dots_data[i+1]));
 	}
-	else
+
+	bool detect_cam;
+	if(camcorners.size() > 0) 
 	{
-		//カメラ画像上のコーナー検出
-//		detect_cam = getCorners(camframe, camcorners, camMinDist, camCornerNum, draw_camimage);
-		//プロジェクタ画像上のコーナー検出
-		//bool detect_proj = getCorners(projframe, projcorners, projMinDist, projCornerNum, draw_projimage); //projcornersがdraw_projimage上でずれるのは、歪み除去してないから
+			detect_cam = true;
 	}
-	//stopTic("conerDetect");
+	else 
+	{
+		detect_cam = false;
+	}
 
 	//コーナー検出できたら、位置推定開始
 	if(detect_cam && detect_proj)
@@ -87,7 +70,6 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 		//startTic();
 
 		// 対応点の歪み除去
-//		std::vector<cv::Point2f> undistort_imagePoint;
 		//std::vector<cv::Point2f> undistort_projPoint;
 		cv::undistortPoints(camcorners, undistort_imagePoint, camera->cam_K, camera->cam_dist);
 		//cv::undistortPoints(projcorners, undistort_projPoint, projector->cam_K, projector->cam_dist);
@@ -111,17 +93,7 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 		cv::Mat _dstT_predict = cv::Mat::zeros(3,1,CV_64F);
 
 
-		int result = 0;
-		if(mode == 1 || mode == 4)//こっちしか機能してない
-		{
-			//result = calcProjectorPose_Corner1(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-			result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, _dstR_predict, _dstT_predict, /*draw_camimage,*/ draw_projimage);
-		}
-		else if(mode == 2)
-		{
-			//result = calcProjectorPose_Corner2(undistort_imagePoint, undistort_projPoint, initialR, initialT, dstR, dstT, draw_projimage);
-//			result = calcProjectorPose_Corner2(undistort_imagePoint, projcorners, initialR, initialT, _dstR, _dstT, draw_camimage, draw_projimage);
-		}
+		int result = calcProjectorPose_Corner1(undistort_imagePoint, projcorners, thresh, isKalman, isPredict, initialR, initialT, _dstR, _dstT, _error, _dstR_predict, _dstT_predict, /*draw_camimage,*/ draw_projimage);
 
 		_dstR.copyTo(dstR);
 		_dstT.copyTo(dstT);
@@ -132,20 +104,13 @@ bool ProjectorEstimation::findProjectorPose_Corner(const cv::Mat projframe, cv::
 
 		//stopTic("calcConer1");
 
-		//cTimeEnd_ = CFileTime::GetCurrentTime();           // 現在時刻
-		//cTimeSpan_ = cTimeEnd_ - cTimeStart_;
-		//debug_log(log);
-		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
-		//std::string timelog = "totalTime: " + std::to_string(cTimeSpan_.GetTimeSpan()/10000);
-		//debug_log(timelog);
-
 		if(result > 0) return true;
 		else return false;
 	}
-	else{
+	else
+	{
 		return false;
 	}
-
 }
 
 //計算部分
@@ -173,30 +138,14 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 					reconstructPoints_valid.emplace_back(reconstructPoints[index]);
 					imagePoints_valid.emplace_back(imagePoints[i]);
 				}
+				else
+				{
+				}
 			}
 			else
 			{
-				//カメラ画像に描画
-//				cv::circle(draw_camimage, cv::Point(image_x, image_y), 2, cv::Scalar(0, 255, 0), 3); //緑
-
-				//std::string stx = "x: ";
-				//debug_log(stx);
-				//debug_log(std::to_string(reconstructPoints[i].x));
-				//std::string sty = "y: ";
-				//debug_log(sty);
-				//debug_log(std::to_string(reconstructPoints[i].y));
-				//std::string stz = "z: ";
-				//debug_log(stz);
-				//debug_log(std::to_string(reconstructPoints[i].z));
 			}
 		}
-
-		//std::string deg = "imagePoints:";
-		//debug_log(deg);
-		//debug_log(std::to_string(imagePoints.size()));
-		//std::string deg1 = "projPoints:";
-		//debug_log(deg1);
-		//debug_log(std::to_string(projPoints.size()));
 
 		//startTic();
 
@@ -269,9 +218,9 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 		for(int i = 0; i < projPoints.size(); i++)
 		{
 
-			//**過去preframesizeフレームの加重平均**//
+			//**ある点の過去preframesizeフレームの加重平均**//
 			double distAve = 0;
-			//arrayが30貯まっていてかつ、それらの重みつけ平均が閾値以上なら、対応点として追加
+			//arrayが30貯まっていたら加重平均を出す
 			if(preDistsArrays[i].size() == preframesize)
 			{
 				//重みつけ平均
@@ -309,14 +258,12 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 //			if( distance <= thresh + 10 || preDists[i] <= thresh)//現フレームでの対応点間距離または前フレームでの距離が閾値以下ならば ->ここもっと時間軸で重み付けとかしたら良くなりそう
 //			if( distance <= thresh) //単純
 //			if(expodist <= thresh)//指数平滑法
-			if(distAve <= thresh && preDistsArrays[i].size() == preframesize)//加重平均
+			if(distAve > 0 && distAve <= thresh)//加重平均
 			{
 				reconstructPoints_order.emplace_back(reconstructPoints_valid[indices[i][0]]);
 				imagePoints_order.emplace_back(imagePoints_valid[indices[i][0]]);
 				projPoints_valid.emplace_back(projPoints[i]);
 			}
-			////preDistsの更新
-			//preDists[i] = distance;
 		}
 
 		///////↑↑対応点の選択↑↑///////
@@ -358,7 +305,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				//startTic();
 
-				//--補正あり--//
 				cv::Mat translation_measured = (cv::Mat_<double>(3, 1) << _dstT.at<double>(0,0), _dstT.at<double>(1,0), _dstT.at<double>(2,0));
 				cv::Mat rotation_measured = (cv::Mat_<double>(3, 3) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2),_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2));
 				cv::Mat measurement(6, 1, CV_64F);
@@ -376,7 +322,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				_dstR_kf.copyTo(_dstR);
 
 				//stopTic("Kalman");
-
 			}
 
 			//startTic();
@@ -407,8 +352,8 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 			{
 				_dstT_predict = (cv::Mat_<double>(3, 1) << predictPose[3][0], predictPose[3][1], predictPose[3][2]);
 				_dstR_predict = (cv::Mat_<double>(3, 3) << predictPose[0][0], predictPose[1][0], predictPose[2][0],
-												   predictPose[0][1], predictPose[1][1], predictPose[2][1], 
-												   predictPose[0][2], predictPose[1][2], predictPose[2][2]);
+													predictPose[0][1], predictPose[1][1], predictPose[2][1], 
+													predictPose[0][2], predictPose[1][2], predictPose[2][2]);
 				_dstT_predict.copyTo(dstT_predict);
 				_dstR_predict.copyTo(dstR_predict);
 
@@ -422,26 +367,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 
 			///////↑↑動き予測↑↑///////
 
-			////マスクをかける
-			//for(int y = 0; y < draw_camimage.rows; y++)
-			//{
-			//	for(int x = 0; x < draw_camimage.cols; x++)
-			//	{
-			//		if(CameraMask.data[(y * draw_camimage.cols + x) * 3 + 0] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 1] == 0 && CameraMask.data[(y * draw_camimage.cols + x) * 3 + 2] == 0)
-			//		{
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 0] = 0; 
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 1] = 0; 
-			//				draw_camimage.data[(y * draw_camimage.cols + x) * 3 + 2] = 0; 
-			//		}
-			//	}
-			//}
-
 			//対応点の様子を描画
 			vector<cv::Point2d> projection_P;
 			vector<double> errors;
 			double aveError = 0; //平均再投影
 			calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT, projection_P, errors);
-			//calcReprojectionErrors(projPoints_valid, reconstructPoints_order, _dstR, _dstT_kf, projection_P, errors);
 
 
 			//有効な対応点の描画(R,t推定後)
@@ -454,8 +384,6 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				//描画(プロジェクタ画像)
 				cv::circle(chessimage,pp, 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
 				cv::circle(chessimage, cp, 5, cv::Scalar(255, 0, 0), 3);//カメラ(予測あり)は青
-				//描画(カメラ画像)
-//				cv::circle(draw_camimage, icp, 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
 
 				//線で結ぶ
 				cv::line(chessimage, pp, cp, cv::Scalar(255, 0, 255), 4);//ピンク(太)
@@ -485,11 +413,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				double distance = sqrt(pow(projPoints[i].x - pt.x, 2) + pow(projPoints[i].y - pt.y, 2));
 				preDists[i] = distance;
 
-				//arraysへの値の代入(MAXが30で、後ろからいれる・前のを押し出す)
+				//arraysへの値の代入(MAXがperframesizeで、後ろからいれる・前のを押し出す)
 				if(preDistsArrays[i].size() < preframesize)
 				{
 					preDistsArrays[i].emplace_back(distance);
-				}
+				}	
 				else
 				{
 					//pop front
@@ -536,11 +464,11 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				double distance = sqrt(pow(projPoints[i].x - pt.x, 2) + pow(projPoints[i].y - pt.y, 2));
 				preDists[i] = distance;
 
-				//arraysへの値の代入(MAXが30で、後ろからいれる・前のを押し出す)
+				//arraysへの値の代入(MAXがperframesizeで、後ろからいれる・前のを押し出す)
 				if(preDistsArrays[i].size() < preframesize)
 				{
 					preDistsArrays[i].emplace_back(distance);
-				}
+				}	
 				else
 				{
 					//pop front
@@ -551,480 +479,10 @@ int ProjectorEstimation::calcProjectorPose_Corner1(std::vector<cv::Point2f> imag
 				}
 			}
 
-				return 0;
+			return 0;
 		}
 }
 
-
-
-//計算部分(最近傍探索を3次元点の方に合わせる)
-int ProjectorEstimation::calcProjectorPose_Corner2(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints,
-																		cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &draw_camimage, cv::Mat &chessimage)
-{
-		////回転行列から回転ベクトルにする
-		//cv::Mat initRVec(3, 1,  CV_64F, cv::Scalar::all(0));
-		//Rodrigues(initialR, initRVec);
-		//回転行列からクォータニオンにする
-		cv::Mat initialR_tr = initialR.t();//関数の都合上転置
-		double w, x, y, z;
-		transformRotMatToQuaternion(x, y, z, w, initialR_tr.at<double>(0, 0), initialR_tr.at<double>(0, 1), initialR_tr.at<double>(0, 2), initialR_tr.at<double>(1, 0), initialR_tr.at<double>(1, 1), initialR_tr.at<double>(1, 2), initialR_tr.at<double>(2, 0), initialR_tr.at<double>(2, 1), initialR_tr.at<double>(2, 2)); 		
-
-		int n = 6; //変数の数
-		int info;
-
-		VectorXd initial(n);
-		initial << x, y, z, initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0);
-
-		//3次元座標が取れた対応点のみを抽出してからLM法に入れる
-		std::vector<cv::Point3f> reconstructPoints_valid;
-		//対応付けられてるカメラ画像点
-		std::vector<cv::Point2f> imagePoints_valid;
-		for(int i = 0; i < imagePoints.size(); i++)
-		{
-			int image_x = (int)(imagePoints[i].x+0.5);
-			int image_y = (int)(imagePoints[i].y+0.5);
-			int index = image_y * camera->width + image_x;
-			if(0 <= image_x && image_x < camera->width && 0 <= image_y && image_y < camera->height && reconstructPoints[index].x != -1)
-			{
-				reconstructPoints_valid.emplace_back(reconstructPoints[index]);
-				imagePoints_valid.emplace_back(imagePoints[i]);
-			}
-		}
-
-		// 2次元(プロジェクタ画像)平面へ投影
-		//std::vector<cv::Point2f> ppt;
-		//cv::projectPoints(reconstructPoints_valid, initialR, initTVec, projector.cam_K, cv::Mat(), ppt); 
-		std::vector<cv::Point2d> ppt;
-		for(int i = 0; i < reconstructPoints_valid.size(); i++)
-		{
-			// 2次元(プロジェクタ画像)平面へ投影
-			cv::Mat wp = (cv::Mat_<double>(4, 1) << reconstructPoints_valid[i].x, reconstructPoints_valid[i].y, reconstructPoints_valid[i].z, 1);
-			//4*4行列にする
-			cv::Mat Rt = (cv::Mat_<double>(4, 4) << initialR.at<double>(0,0), initialR.at<double>(0,1), initialR.at<double>(0,2), initialT.at<double>(0,0),
-																		  initialR.at<double>(1,0), initialR.at<double>(1,1), initialR.at<double>(1,2), initialT.at<double>(1,0),
-																		  initialR.at<double>(2,0), initialR.at<double>(2,1), initialR.at<double>(2,2), initialT.at<double>(2,0),
-																		  0, 0, 0, 1);
-			cv::Mat dst_p = projK_34 * Rt * wp;
-			cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-			ppt.emplace_back(pt);
-		}
-
-		///////↓↓最近傍探索で対応を求める↓↓///////
-
-		//最近傍探索 X:カメラ点　Y:プロジェクタ点
-		boost::shared_array<double> m_X ( new double [ppt.size()*2] );
-		for (int i = 0; i < ppt.size(); i++)
-		{
-			m_X[i*2 + 0] = ppt[i].x;
-			m_X[i*2 + 1] = ppt[i].y;
-		}
-		flann::Matrix<double> mat_X(m_X.get(), ppt.size(), 2); // Xsize rows and 3 columns
-
-		boost::shared_array<double> m_Y ( new double [projPoints.size()*2] );
-		for (int i = 0; i < projPoints.size(); i++)
-		{
-			m_Y[i*2 + 0] = projPoints[i].x;
-			m_Y[i*2 + 1] = projPoints[i].y;
-		}
-		flann::Matrix<double> mat_Y(m_Y.get(), projPoints.size(), 2); // Ysize rows and 3 columns
-
-		flann::Index< flann::L2<double> > index( mat_Y, flann::KDTreeIndexParams() );
-		index.buildIndex();
-			
-		// find closest points
-		vector< std::vector<size_t> > indices(reconstructPoints_valid.size());
-		vector< std::vector<double> >  dists(reconstructPoints_valid.size());
-		//indices[Xのインデックス][0] = 対応するYのインデックス
-		index.knnSearch(mat_X,
-								indices,
-								dists,
-								1, // k of knn
-								flann::SearchParams() );
-
-		//対応点の重み
-		//std::vector<double> weight;
-		//対応順に3次元点を整列する
-		std::vector<cv::Point2f> projPoints_order;
-		for(int i = 0; i < reconstructPoints_valid.size(); i++){
-			projPoints_order.emplace_back(projPoints[indices[i][0]]);
-			////今仮
-			//weight.emplace_back(1.0);
-		}
-
-		misra1a_functor functor(n, projPoints_order.size(), projPoints_order, reconstructPoints_valid, projK_34);
-    
-		NumericalDiff<misra1a_functor> numDiff(functor);
-		LevenbergMarquardt<NumericalDiff<misra1a_functor> > lm(numDiff);
-
-		///////↑↑最近傍探索で対応を求める↑↑///////
-
-		info = lm.minimize(initial);
-    
-		std::cout << "学習結果: " << std::endl;
-		std::cout <<
-			initial[0] << " " <<
-			initial[1] << " " <<
-			initial[2] << " " <<
-			initial[3] << " " <<
-			initial[4] << " " <<
-			initial[5]	 << std::endl;
-
-		//出力
-		//cv::Mat dstRVec = (cv::Mat_<double>(3, 1) << initial[0], initial[1], initial[2]);
-		//Rodrigues(dstRVec, dstR); //->src.copyTo(data)使って代入しないとダメ　じゃなくて　回転ベクトルを毎回正規化しないとダメ
-		//回転
-		Quaterniond q(0, initial[0], initial[1], initial[2]);
-		q.w () = static_cast<double> (sqrt (1 - q.dot (q)));
-		q.normalize ();
-		MatrixXd qMat = q.toRotationMatrix();
-		cv::Mat _dstR = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
-		//並進
-		cv::Mat _dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
-		//cv::Mat dstTVec = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);//保持用
-
-		//対応点の投影誤差算出
-		double aveError = 0;
-
-		//対応点の様子を描画
-		//std::vector<cv::Point2f> pt;
-		//cv::projectPoints(reconstructPoints_valid, dstRVec, dstTVec, projector.cam_K, cv::Mat(), pt); 
-		for(int i = 0; i < reconstructPoints_valid.size(); i++)
-		{
-			// 2次元(プロジェクタ画像)平面へ投影
-			cv::Mat wp = (cv::Mat_<double>(4, 1) << reconstructPoints_valid[i].x, reconstructPoints_valid[i].y, reconstructPoints_valid[i].z, 1);
-			//4*4行列にする
-			cv::Mat Rt = (cv::Mat_<double>(4, 4) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstT.at<double>(0,0),
-																		  _dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT.at<double>(1,0),
-																		  _dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT.at<double>(2,0),
-																		  0, 0, 0, 1);
-			cv::Mat dst_p = projK_34 * Rt * wp;
-			cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-			//描画
-			cv::circle(chessimage, projPoints_order[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
-			cv::circle(chessimage, pt, 5, cv::Scalar(255, 0, 0), 3);//カメラは青
-			//描画(カメラ画像)
-			cv::circle(draw_camimage, imagePoints_valid[i], 1, cv::Scalar(255, 0, 0), 3); //対応つけられてるのは青に
-
-			double error = sqrt(pow(pt.x - projPoints_order[i].x, 2) + pow(pt.y - projPoints_order[i].y, 2));
-			aveError += error;
-		}
-
-		////重心も描画
-		//cv::Point2f imageWorldPointAve;
-		//cv::Point2f projAve;
-		//calcAveragePoint(reconstructPoints_valid, projPoints, dstRVec, dstTVec,imageWorldPointAve, projAve);
-		//cv::circle(chessimage, projAve, 8, cv::Scalar(0, 0, 255), 10);//プロジェクタは赤
-		//cv::circle(chessimage, imageWorldPointAve, 8, cv::Scalar(255, 0, 0), 10);//カメラは青
-
-		std::cout << "reprojection error ave : " << (double)(aveError / projPoints.size()) << std::endl;
-
-		_dstR.copyTo(dstR);
-		_dstT.copyTo(dstT);
-
-		std::cout << "info: " << info << std::endl;
-		return info;
-}
-
-
-
-
-
-//コーナー検出
-bool ProjectorEstimation::getCorners(cv::Mat frame, std::vector<cv::Point2f> &corners, double minDistance, double num, cv::Mat &drawimage){
-	cv::Mat gray_img;
-	//歪み除去
-	//cv::undistort(frame, undist_img1, camera.cam_K, camera.cam_dist);
-	//グレースケール
-	cv::cvtColor(frame, gray_img, CV_BGR2GRAY);
-
-	//コーナー検出
-	//int num = 500;
-	cv::goodFeaturesToTrack(gray_img, corners, num, 0.01, minDistance);
-
-	//高精度化
-	cv::cornerSubPix(gray_img, corners, cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
-
-	//描画
-	for(int i = 0; i < corners.size(); i++)
-	{
-		cv::circle(drawimage, corners[i], 1, cv::Scalar(0, 0, 255), 3);
-	}
-
-	//コーナー検出ができたかどうか
-	if(corners.size() > 0)	return true;
-	else	return false;
-}
-
-
-//各対応点の重心位置を計算
-void ProjectorEstimation::calcAveragePoint(std::vector<cv::Point3f> imageWorldPoints, std::vector<cv::Point2f> projPoints, 
-								cv::Mat R, cv::Mat t, cv::Point2f& imageAve, cv::Point2f& projAve)
-{
-	//各対応点のプロジェクタ画像上での重心を求める
-	//(1)proj_p_
-	float sum_px = 0, sum_py = 0, px = 0, py = 0;
-	for(int i = 0; i < projPoints.size(); i++)
-	{
-		sum_px += projPoints[i].x;
-		sum_py += projPoints[i].y;
-	}
-	px = sum_px / projPoints.size();
-	py = sum_py / projPoints.size();
-
-	projAve.x = px;
-	projAve.y = py;
-
-	//(2)worldPoints_
-	// 2次元(プロジェクタ画像)平面へ投影
-	std::vector<cv::Point2f> pt;
-	cv::projectPoints(imageWorldPoints, R, t, projector->cam_K, cv::Mat(), pt); 
-	float sum_wx = 0, sum_wy = 0, wx = 0, wy = 0;
-	for(int i = 0; i < pt.size(); i++)
-	{
-		sum_wx += pt[i].x;
-		sum_wy += pt[i].y;
-	}
-	wx = sum_wx / pt.size();
-	wy = sum_wy / pt.size();
-
-	imageAve.x = wx;
-	imageAve.y = wy;
-}
-
-
-//****チェッカパターンによる推定の場合****
-
-//チェッカボード検出によるプロジェクタ位置姿勢を推定
-bool ProjectorEstimation::findProjectorPose(cv::Mat frame, cv::Mat initialR, cv::Mat initialT, cv::Mat &dstR, cv::Mat &dstT, cv::Mat &draw_image, cv::Mat &chessimage){
-
-	//チェッカパターン検出(カメラ画像は歪んだまま)
-	bool detect = getCheckerCorners(cameraImageCorners, frame, draw_image);
-
-	//検出できたら、位置推定開始
-	if(detect)
-	{
-		// 対応点の歪み除去
-		std::vector<cv::Point2f> undistort_imagePoint;
-		//std::vector<cv::Point2f> undistort_projPoint;
-		cv::undistortPoints(cameraImageCorners, undistort_imagePoint, camera->cam_K, camera->cam_dist);
-		//cv::undistortPoints(projectorImageCorners, undistort_projPoint, projector->cam_K, projector->cam_dist);
-		for(int i=0; i<cameraImageCorners.size(); ++i)
-		{
-			undistort_imagePoint[i].x = undistort_imagePoint[i].x * camera->cam_K.at<double>(0,0) + camera->cam_K.at<double>(0,2);
-			undistort_imagePoint[i].y = undistort_imagePoint[i].y * camera->cam_K.at<double>(1,1) + camera->cam_K.at<double>(1,2);
-			//undistort_projPoint[i].x = undistort_projPoint[i].x * projector->cam_K.at<double>(0,0) + projector->cam_K.at<double>(0,2);
-			//undistort_projPoint[i].y = undistort_projPoint[i].y * projector->cam_K.at<double>(1,1) + projector->cam_K.at<double>(1,2);
-		}
-		cv::Mat _dstR = cv::Mat::eye(3,3,CV_64F);
-		cv::Mat _dstT = cv::Mat::zeros(3,1,CV_64F);
-			
-		int result = calcProjectorPose(undistort_imagePoint, projectorImageCorners, initialR, initialT, _dstR, _dstT, chessimage);
-
-		_dstR.copyTo(dstR);
-		_dstT.copyTo(dstT);
-
-		if(result > 0) return true;
-
-		else return false;
-	}
-	else{
-		return false;
-	}
-}
-
-//計算部分(Rの自由度3)
-int ProjectorEstimation::calcProjectorPose(std::vector<cv::Point2f> imagePoints, std::vector<cv::Point2f> projPoints, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT, cv::Mat &chessimage)
-{
-	//回転行列からクォータニオンにする
-	cv::Mat initialR_tr = initialR.t();//関数の都合上転置
-	double w, x, y, z;
-	transformRotMatToQuaternion(x, y, z, w, initialR_tr.at<double>(0, 0), initialR_tr.at<double>(0, 1), initialR_tr.at<double>(0, 2), initialR_tr.at<double>(1, 0), initialR_tr.at<double>(1, 1), initialR_tr.at<double>(1, 2), initialR_tr.at<double>(2, 0), initialR_tr.at<double>(2, 1), initialR_tr.at<double>(2, 2)); 		
-		
-	cv::Mat initTVec = (cv::Mat_<double>(3, 1) << initialT.at<double>(0, 0), initialT.at<double>(1, 0), initialT.at<double>(2, 0));
-
-	int n = 6; //変数の数
-	int info;
-
-	VectorXd initial(n);
-	initial << x, y, z, initTVec.at<double>(0, 0), initTVec.at<double>(1, 0), initTVec.at<double>(2, 0);
-
-	//対応点の重み(ダミー)
-	//std::vector<double> weight;
-
-	//3次元座標が取れた対応点のみを抽出してからLM法に入れる
-	std::vector<cv::Point3f> reconstructPoints_valid;
-	std::vector<cv::Point2f> projPoints_valid;
-	for(int i = 0; i < imagePoints.size(); i++)
-	{
-		int image_x = (int)(imagePoints[i].x+0.5);
-		int image_y = (int)(imagePoints[i].y+0.5);
-		int index = image_y * camera->width + image_x;
-		if(reconstructPoints[index].x != -1)
-		{
-			reconstructPoints_valid.emplace_back(reconstructPoints[index]);
-			projPoints_valid.emplace_back(projPoints[i]);
-			//weight.emplace_back(1.0);
-		}
-	}
-
-	misra1a_functor functor(n, projPoints_valid.size(), projPoints_valid, reconstructPoints_valid, projK_34);
-    
-	NumericalDiff<misra1a_functor> numDiff(functor);
-	LevenbergMarquardt<NumericalDiff<misra1a_functor> > lm(numDiff);
-	info = lm.minimize(initial); //info=2がかえってくる 時々5
-    
-	//std::cout << "学習結果: " << std::endl;
-	//std::cout <<
-	//	initial[0] << " " <<
-	//	initial[1] << " " <<
-	//	initial[2] << " " <<
-	//	initial[3] << " " <<
-	//	initial[4] << " " <<
-	//	initial[5]	 << std::endl;
-
-	//出力
-	//回転
-	Quaterniond q(0, initial[0], initial[1], initial[2]);
-	q.w () = static_cast<double> (sqrt (1 - q.dot (q)));
-	q.normalize ();
-	MatrixXd qMat = q.toRotationMatrix();
-	cv::Mat _dstR = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
-	//並進
-	cv::Mat _dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
-
-	//対応点の様子を描画
-	//std::vector<cv::Point2f> pt;
-	//cv::projectPoints(reconstructPoints_valid, dstRVec, dstTVec, projector.cam_K, cv::Mat(), pt); 
-	//4*4行列にする
-	cv::Mat Rt = (cv::Mat_<double>(4, 4) << _dstR.at<double>(0,0), _dstR.at<double>(0,1), _dstR.at<double>(0,2), _dstT.at<double>(0,0),
-																	_dstR.at<double>(1,0), _dstR.at<double>(1,1), _dstR.at<double>(1,2), _dstT.at<double>(1,0),
-																	_dstR.at<double>(2,0), _dstR.at<double>(2,1), _dstR.at<double>(2,2), _dstT.at<double>(2,0),
-																	0, 0, 0, 1);
-	for(int i = 0; i < projPoints_valid.size(); i++)
-	{
-		// 2次元(プロジェクタ画像)平面へ投影
-		cv::Mat wp = (cv::Mat_<double>(4, 1) << reconstructPoints_valid[i].x, reconstructPoints_valid[i].y, reconstructPoints_valid[i].z, 1);
-		cv::Mat dst_p = projK_34 * Rt * wp;
-		cv::Point2f pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
-		//描画
-		cv::circle(chessimage, projPoints_valid[i], 5, cv::Scalar(0, 0, 255), 3); //プロジェクタは赤
-		cv::circle(chessimage, pt, 5, cv::Scalar(255, 0, 0), 3);//カメラは青
-	}
-	////重心も描画
-	//cv::Point2f imageWorldPointAve;
-	//cv::Point2f projAve;
-	//calcAveragePoint(reconstructPoints_valid, projPoints_valid, dstRVec, dstTVec,imageWorldPointAve, projAve);
-	//cv::circle(chessimage, projAve, 8, cv::Scalar(0, 0, 255), 10);//プロジェクタは赤
-	//cv::circle(chessimage, imageWorldPointAve, 8, cv::Scalar(255, 0, 0), 10);//カメラは青
-
-
-	_dstR.copyTo(dstR);
-	_dstT.copyTo(dstT);
-	std::cout << "info: " << info << std::endl;
-	return info;
-}
-
-//カメラ画像をチェッカパターン検出する
-bool ProjectorEstimation::getCheckerCorners(std::vector<cv::Point2f>& imagePoint, const cv::Mat &image, cv::Mat &draw_image)
-{
-	//交点検出
-	bool detect = cv::findChessboardCorners(image, checkerPattern, imagePoint);
-
-	//検出点の描画
-	image.copyTo(draw_image);
-	if(detect)
-	{
-		//サブピクセル精度
-		cv::Mat gray;
-		cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
-		cv::cornerSubPix( gray, imagePoint, cv::Size( 11, 11 ), cv::Size( -1, -1 ), cv::TermCriteria( cv::TermCriteria::MAX_ITER | cv::TermCriteria::EPS, 20, 0.001 ) );
-
-		cv::drawChessboardCorners(draw_image, checkerPattern, imagePoint, true);
-	}else
-	{
-		cv::drawChessboardCorners(draw_image, checkerPattern, imagePoint, false);
-	}
-
-	return detect;
-}
-
-
-//プロジェクタ画像上の交点座標を求める
-void ProjectorEstimation::getProjectorImageCorners(std::vector<cv::Point2f>& projPoint, int _row, int _col, int _blockSize, int _x_offset, int _y_offset)
-{
-	for (int y = 0; y < _row; y++)
-	{
-		for(int x = 0; x < _col; x++)
-		{
-			projPoint.push_back(cv::Point2f(_x_offset + x * _blockSize, _y_offset + y * _blockSize));
-		}
-	}
-}
-
-///////////////////////////////////////////////
-// 回転行列→クォータニオン変換
-//
-// qx, qy, qz, qw : クォータニオン成分（出力）
-// m11-m33 : 回転行列成分
-//
-// ※注意：
-// 行列成分はDirectX形式（行方向が軸の向き）です
-// OpenGL形式（列方向が軸の向き）の場合は
-// 転置した値を入れて下さい。
-
-bool ProjectorEstimation::transformRotMatToQuaternion(
-    double &qx, double &qy, double &qz, double &qw,
-    double m11, double m12, double m13,
-    double m21, double m22, double m23,
-    double m31, double m32, double m33
-) {
-    // 最大成分を検索
-    double elem[ 4 ]; // 0:x, 1:y, 2:z, 3:w
-    elem[ 0 ] = m11 - m22 - m33 + 1.0f;
-    elem[ 1 ] = -m11 + m22 - m33 + 1.0f;
-    elem[ 2 ] = -m11 - m22 + m33 + 1.0f;
-    elem[ 3 ] = m11 + m22 + m33 + 1.0f;
-
-    unsigned biggestIndex = 0;
-    for ( int i = 1; i < 4; i++ ) {
-        if ( elem[i] > elem[biggestIndex] )
-            biggestIndex = i;
-    }
-
-    if ( elem[biggestIndex] < 0.0f )
-        return false; // 引数の行列に間違いあり！
-
-    // 最大要素の値を算出
-    double *q[4] = {&qx, &qy, &qz, &qw};
-    double v = sqrtf( elem[biggestIndex] ) * 0.5f;
-    *q[biggestIndex] = v;
-    double mult = 0.25f / v;
-
-    switch ( biggestIndex ) {
-    case 0: // x
-        *q[1] = (m12 + m21) * mult;
-        *q[2] = (m31 + m13) * mult;
-        *q[3] = (m23 - m32) * mult;
-        break;
-    case 1: // y
-        *q[0] = (m12 + m21) * mult;
-        *q[2] = (m23 + m32) * mult;
-        *q[3] = (m31 - m13) * mult;
-        break;
-    case 2: // z
-        *q[0] = (m31 + m13) * mult;
-        *q[1] = (m23 + m32) * mult;
-        *q[3] = (m12 - m21) * mult;
-    break;
-    case 3: // w
-        *q[0] = (m23 - m32) * mult;
-        *q[1] = (m31 - m13) * mult;
-        *q[2] = (m12 - m21) * mult;
-        break;
-    }
-
-    return true;
-}
 
 
 //ランダムにnum点を抽出
@@ -1085,7 +543,6 @@ int ProjectorEstimation::calcParameters(vector<cv::Point2f> src_p, vector<cv::Po
 	MatrixXd qMat = q.toRotationMatrix();
 	cv::Mat _dstR = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
 	//並進
-	//--予測なし--//
 	cv::Mat _dstT = (cv::Mat_<double>(3, 1) << initial[3], initial[4], initial[5]);
 
 	_dstR.copyTo(dstR);
@@ -1094,7 +551,7 @@ int ProjectorEstimation::calcParameters(vector<cv::Point2f> src_p, vector<cv::Po
 	return info;
 }
 
-//Ceres Solver Version(マイナス30msくらいになった！！！)
+//対応点からRとTの算出 Ceres Solver Version(マイナス30msくらいになった！！！)
 int ProjectorEstimation::calcParameters_Ceres(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat initialR, cv::Mat initialT, cv::Mat& dstR, cv::Mat& dstT)
 {
 	////回転行列からクォータニオンにする
@@ -1149,7 +606,7 @@ int ProjectorEstimation::calcParameters_Ceres(vector<cv::Point2f> src_p, vector<
 
 //3次元点のプロジェクタ画像への射影と再投影誤差の計算
 void ProjectorEstimation::calcReprojectionErrors(vector<cv::Point2f> src_p, vector<cv::Point3f> src_P, cv::Mat R, cv::Mat T, vector<cv::Point2d>& projection_P, vector<double>& errors){
-	//対応点の様子を描画
+	//4*4行列にする
 	cv::Mat Rt = (cv::Mat_<double>(4, 4) << R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), T.at<double>(0,0),
 																	R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), T.at<double>(1,0),
 																	R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), T.at<double>(2,0),
@@ -1158,8 +615,6 @@ void ProjectorEstimation::calcReprojectionErrors(vector<cv::Point2f> src_p, vect
 	{
 		// 2次元(プロジェクタ画像)平面へ投影
 		cv::Mat wp = (cv::Mat_<double>(4, 1) << src_P[i].x, src_P[i].y, src_P[i].z, 1);
-		//4*4行列にする
-		//--予測なし--//
 		cv::Mat dst_p = projK_34 * Rt * wp;
 		cv::Point2d pt(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
 		//対応点の再投影誤差算出
@@ -1281,17 +736,6 @@ int ProjectorEstimation::calcParameters_RANSAC(vector<cv::Point2f> src_p, vector
 		return result;
 }
 
-//処理時間計測用・DebugLog表示用
-void ProjectorEstimation::stopTic(std::string label)
-{
-		cTimeEnd = CFileTime::GetCurrentTime();           // 現在時刻
-		cTimeSpan = cTimeEnd - cTimeStart;
-		//debug_log(log);
-		//debug_log(std::to_string(cTimeSpan.GetTimeSpan()/10000));
-		std::string timelog = label +": " + std::to_string(cTimeSpan.GetTimeSpan()/10000);
-		debug_log(timelog);
-}
-
 //**ランダムドットマーカー用**//	
 //csvファイルから円の座標を読み込む
 bool ProjectorEstimation::loadDots(std::vector<cv::Point2f> &corners, cv::Mat &drawimage)
@@ -1320,96 +764,96 @@ bool ProjectorEstimation::loadDots(std::vector<cv::Point2f> &corners, cv::Mat &d
 		corners.emplace_back(cv::Point2f(x, y));
 
 	}
+
+	//1フレーム前の対応点間距離の初期化
+	for(int i = 0; i < corners.size(); i++)
+	{
+		preDists.emplace_back(0.0);
+		preExpoDists.emplace_back(0.0);
+	}
+	std::vector<double> array;
+	array.clear();
+	for(int i = 0; i < corners.size(); i++)
+	{
+		preDistsArrays.emplace_back(array);
+	}
+
 	return true;
 }
-//ドット検出
-bool ProjectorEstimation::getDots(cv::Mat &src, std::vector<cv::Point2f> &dots, double C, int dots_thresh_min, int dots_thresh_max, float resizeScale, cv::Mat &drawimage)
-{
-	dots.clear();
-	//リサイズ
-	cv::Mat resized;
-	cv::resize(src, resized, cv::Size(), resizeScale, resizeScale);
-	//適応的閾値処理
-	cv::adaptiveThreshold(resized, resized, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 7, C);
-	//膨張処理
-	cv::dilate(resized, resized, cv::Mat());
-	//原寸大に戻す
-	cv::Mat ptsImg = cv::Mat::zeros( camera->height, camera->width, CV_8UC1); //原寸大表示用
-	cv::resize(resized, ptsImg, cv::Size(), 1/resizeScale, 1/resizeScale);
-	//cv::Mat ptsImgColor; 
-	//cv::cvtColor(ptsImg, ptsImgColor, CV_GRAY2BGR);
 
-	cv::Point sum, min, max, p;
-	int cnt;
-	for (int i = 0; i < ptsImg.rows; i++) {
-		for (int j = 0; j < ptsImg.cols; j++) {
-			if (ptsImg.at<uchar>(i, j)) {
-				sum = cv::Point(0, 0); cnt = 0; min = cv::Point(j, i); max = cv::Point(j, i);
-				calCoG_dot_v0(ptsImg, sum, cnt, min, max, cv::Point(j, i));
-				if (cnt>dots_thresh_min && max.x - min.x < dots_thresh_max && max.y - min.y < dots_thresh_max) {
-					dots.push_back(cv::Point(sum.x / cnt, sum.y / cnt));
-					//dots.push_back(cv::Point((int)((float)(sum.x / cnt) / resizeScale + 0.5), (int)((float)(sum.y / cnt) / resizeScale + 0.5)));
+///////////////////////////////////////////////
+// 回転行列→クォータニオン変換
+//
+// qx, qy, qz, qw : クォータニオン成分（出力）
+// m11-m33 : 回転行列成分
+//
+// ※注意：
+// 行列成分はDirectX形式（行方向が軸の向き）です
+// OpenGL形式（列方向が軸の向き）の場合は
+// 転置した値を入れて下さい。
 
-				}
-			}
-		}
-	}
+bool ProjectorEstimation::transformRotMatToQuaternion(
+    double &qx, double &qy, double &qz, double &qw,
+    double m11, double m12, double m13,
+    double m21, double m22, double m23,
+    double m31, double m32, double m33
+) {
+    // 最大成分を検索
+    double elem[ 4 ]; // 0:x, 1:y, 2:z, 3:w
+    elem[ 0 ] = m11 - m22 - m33 + 1.0f;
+    elem[ 1 ] = -m11 + m22 - m33 + 1.0f;
+    elem[ 2 ] = -m11 - m22 + m33 + 1.0f;
+    elem[ 3 ] = m11 + m22 + m33 + 1.0f;
 
+    unsigned biggestIndex = 0;
+    for ( int i = 1; i < 4; i++ ) {
+        if ( elem[i] > elem[biggestIndex] )
+            biggestIndex = i;
+    }
 
-	//cv::rectangle(ptsImg, cv::Point(CamWidth / 4, CamHeight / 4), cv::Point(CamWidth * 3 / 4, CamHeight * 3 / 4), cv::Scalar(255, 0, 0), 5, 4);
-	// OpenGL用に予めRGB用のデータ作成
-	//cv::rectangle(ptsImg, cv::Point(CamWidth / 4, CamHeight / 4), cv::Point(CamWidth * 3 / 4, CamHeight * 3 / 4), cv::Scalar(0, 0, 255), 5, 4);
-	std::vector<cv::Point2f>::iterator it = dots.begin();
-	
-	//bool k = (dots.size()==projcorners.size());
-	bool k = (dots.size() >= 20);
-	//for (int i=0; it != dots.end(); i++,++it) {
-	//	if (i && i%MarkersWidth == 0) {
-	//		if ((*it).y <= (*(it - 1)).y) k = false;
-	//	} else {
-	//		if (i && (*it).x <= (*(it - 1)).x) k = false;
-	//	}
-	//}
-	//cv::Scalar co = k ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-	// OpenGL用に予めRGB用のデータ作成
-	cv::Scalar color = k ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0);
-	for (it = dots.begin(); it != dots.end(); ++it) {
-		cv::circle(drawimage, *it, 3, color, 2);
-		//cv::circle(ptsImgColor, *it, 3, color, 2);
-	}
-	
-	//cv::imshow("detected dots", ptsImgColor); 
+    if ( elem[biggestIndex] < 0.0f )
+        return false; // 引数の行列に間違いあり！
 
-	//if (k) {
-	//	it = dots.begin();
-	//	for (int i = 0; it != dots.end(); ++it) {
-	//		marker_u[i / MarkersWidth][i%MarkersWidth] = *it;
-	//		marker_s[i / MarkersWidth][i%MarkersWidth] = true;
-	//		i++;
-	//	}
-	//	
-	//	flag = 1;
-	//	std::cout << "init complete!" << std::endl;
-	//	
-	//}
+    // 最大要素の値を算出
+    double *q[4] = {&qx, &qy, &qz, &qw};
+    double v = sqrtf( elem[biggestIndex] ) * 0.5f;
+    *q[biggestIndex] = v;
+    double mult = 0.25f / v;
 
-	return k;
+    switch ( biggestIndex ) {
+    case 0: // x
+        *q[1] = (m12 + m21) * mult;
+        *q[2] = (m31 + m13) * mult;
+        *q[3] = (m23 - m32) * mult;
+        break;
+    case 1: // y
+        *q[0] = (m12 + m21) * mult;
+        *q[2] = (m23 + m32) * mult;
+        *q[3] = (m31 - m13) * mult;
+        break;
+    case 2: // z
+        *q[0] = (m31 + m13) * mult;
+        *q[1] = (m23 + m32) * mult;
+        *q[3] = (m12 - m21) * mult;
+    break;
+    case 3: // w
+        *q[0] = (m23 - m32) * mult;
+        *q[1] = (m31 - m13) * mult;
+        *q[2] = (m12 - m21) * mult;
+        break;
+    }
+
+    return true;
 }
 
-void ProjectorEstimation::calCoG_dot_v0(cv::Mat &src, cv::Point& sum, int& cnt, cv::Point& min, cv::Point& max, cv::Point p)
+//処理時間計測用・DebugLog表示用
+void ProjectorEstimation::stopTic(std::string label)
 {
-	if (src.at<uchar>(p)) {
-		sum += p; cnt++;
-		src.at<uchar>(p) = 0;
-		if (p.x<min.x) min.x = p.x;
-		if (p.x>max.x) max.x = p.x;
-		if (p.y<min.y) min.y = p.y;
-		if (p.y>max.y) max.y = p.y;
-
-		if (p.x - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x-1, p.y));
-		if (p.x + 1 < camera->width) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x + 1, p.y));
-		if (p.y - 1 >= 0) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y - 1));
-		if (p.y + 1 < camera->height) calCoG_dot_v0(src, sum, cnt, min, max, cv::Point(p.x, p.y + 1));
-	}
+		cTimeEnd = CFileTime::GetCurrentTime(); // 現在時刻
+		cTimeSpan = cTimeEnd - cTimeStart;
+		std::string timelog = label +": " + std::to_string(cTimeSpan.GetTimeSpan()/10000);
+		debug_log(timelog);
 }
+
+
 

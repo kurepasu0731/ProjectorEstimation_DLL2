@@ -17,13 +17,12 @@ extern "C" {
 	//プロジェクタ位置推定コア呼び出し(プロジェクタ画像更新なし)
 	DLLExport bool callfindProjectorPose_Corner(void* projectorestimation, /*unsigned char* cam_data,*/
 																	int dotsCount, int dots_data[],
-																	double _initR[], double _initT[], double _dstR[], double _dstT[], double aveError[],
+																	double _initR[], double _initT[], 
+																	double _dstR[], double _dstT[], 
+																	double aveError[],
 																	double _dstR_predict[], double _dstT_predict[],
-																	//int camCornerNum, double camMinDist, int projCornerNum, double projMinDist, 
 																	double thresh, 
-																	int mode, 
 																	bool isKalman, bool isPredict);
-																	//double C, int dotsMin, int dotsMax, float resizeScale);
 
 	//ウィンドウ破棄
 	DLLExport void destroyAllWindows()

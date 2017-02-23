@@ -36,38 +36,11 @@ using namespace std;
 			  proj_p_(proj_p),
 			  worldPoints_(world_p),
 			  projK_34(_projK_34){}
-			  //cam_p_(cam_p), 
-			  //reconstructPoints_(reconstructPoints),
-			  //cam_K_(cam_K), 
-			  //proj_K_(proj_K),
-			  //projK_inv_t(proj_K_.inv().t()), 
-			  //camK_inv(cam_K.inv()) {}
     
 		vector<cv::Point2f> proj_p_;
 		vector<cv::Point3f> worldPoints_;
 		vector<double> weight;
 		const cv::Mat projK_34;
-
-		//**エピポーラ方程式を用いた最適化**//
-
-		//Rの自由度3にする
-		//int operator()(const VectorXd& _Rt, VectorXd& fvec) const
-		//{
-		//	//回転ベクトルから回転行列にする
-		//	Mat rotateVec = (cv::Mat_<double>(3, 1) << _Rt[0], _Rt[1], _Rt[2]);
-		//	Mat R(3, 3, CV_64F, Scalar::all(0));
-		//	Rodrigues(rotateVec, R);
-		//	//[t]x
-		//	Mat tx = (cv::Mat_<double>(3, 3) << 0, -_Rt[5], _Rt[4], _Rt[5], 0, -_Rt[3], -_Rt[4], _Rt[3], 0);
-		//	for (int i = 0; i < values_; ++i) {
-		//		Mat cp = (cv::Mat_<double>(3, 1) << (double)cam_p_.at(i).x,  (double)cam_p_.at(i).y,  1);
-		//		Mat pp = (cv::Mat_<double>(3, 1) << (double)proj_p_.at(i).x,  (double)proj_p_.at(i).y,  1);
-		//		Mat error = pp.t() * projK_inv_t * tx * R * camK_inv * cp;
-		//		fvec[i] = error.at<double>(0, 0);
-		//	}
-		//	return 0;
-		//}
-
 
 		//**3次元復元結果を用いた最適化**//
 
@@ -80,14 +53,15 @@ using namespace std;
 			q.w () = static_cast<double> (sqrt (1 - q.dot (q)));
 			q.normalize ();
 			MatrixXd qMat = q.toRotationMatrix();
-			cv::Mat R_33 = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
-			//並進
-			//cv::Mat vt = (cv::Mat_<double>(3, 1) << _Rt[3], _Rt[4], _Rt[5]);
 
+			//回転行列
+			cv::Mat R_33 = (cv::Mat_<double>(3, 3) << qMat(0, 0), qMat(0, 1), qMat(0, 2), qMat(1, 0), qMat(1, 1), qMat(1, 2), qMat(2, 0), qMat(2, 1), qMat(2, 2));
+			//並進ベクトル
+			cv::Mat vt = (cv::Mat_<double>(3, 1) << _Rt[3], _Rt[4], _Rt[5]);
 			//4*4行列にする
-			cv::Mat Rt = (cv::Mat_<double>(4, 4) << R_33.at<double>(0,0), R_33.at<double>(0,1), R_33.at<double>(0,2), _Rt[3],
-					                            R_33.at<double>(1,0), R_33.at<double>(1,1), R_33.at<double>(1,2), _Rt[4],
-												R_33.at<double>(2,0), R_33.at<double>(2,1), R_33.at<double>(2,2), _Rt[5],
+			cv::Mat Rt = (cv::Mat_<double>(4, 4) << R_33.at<double>(0,0), R_33.at<double>(0,1), R_33.at<double>(0,2), vt.at<double>(0, 0),
+					                            R_33.at<double>(1,0), R_33.at<double>(1,1), R_33.at<double>(1,2), vt.at<double>(1, 0),
+												R_33.at<double>(2,0), R_33.at<double>(2,1), R_33.at<double>(2,2), vt.at<double>(2, 0),
 												0, 0, 0, 1);
 			// 射影誤差算出
 			for (int i = 0; i < values_; ++i) 
@@ -98,7 +72,6 @@ using namespace std;
 				cv::Point2d project_p(dst_p.at<double>(0,0) / dst_p.at<double>(2,0), dst_p.at<double>(1,0) / dst_p.at<double>(2,0));
 				// 射影誤差算出(重みをつける)
 				fvec[i] = sqrt(pow(project_p.x - proj_p_[i].x, 2) + pow(project_p.y - proj_p_[i].y, 2));
-				//std::cout << "fvec[" << i << "]: " << fvec[i] << std::endl;
 			}
 			return 0;
 		}
