@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Kalmanfilter.cpp" />
+    <ClCompile Include="LoadParameter.cpp" />
     <ClCompile Include="LSM\LeastSquaresMethod.cpp" />
     <ClCompile Include="LSM\LeastSquaresMethodQuadratic.cpp" />
     <ClCompile Include="LSM\LSMPoint3f.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="ErrorFunction.h" />
     <ClInclude Include="DebugLogWrapper.h" />
     <ClInclude Include="KalmanFilter.h" />
+    <ClInclude Include="LoadParameter.h" />
     <ClInclude Include="LSM\LeastSquaresMethod.h" />
     <ClInclude Include="LSM\LeastSquaresMethodQuadratic.h" />
     <ClInclude Include="LSM\LSMPoint3f.h" />

@@ -42,6 +42,9 @@
     <ClCompile Include="LSM\LSMQuatd.cpp">
       <Filter>ソース ファイル\LSM</Filter>
     </ClCompile>
+    <ClCompile Include="LoadParameter.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="projectorPoseEstimation.h">
@@ -78,6 +81,9 @@
       <Filter>ヘッダー ファイル\LSM</Filter>
     </ClInclude>
     <ClInclude Include="myTimer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadParameter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
