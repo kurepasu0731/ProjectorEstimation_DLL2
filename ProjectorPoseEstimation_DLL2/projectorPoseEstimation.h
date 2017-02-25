@@ -35,7 +35,6 @@ class ProjectorEstimation
 public:
 	WebCamera* camera;
 	WebCamera* projector;
-	cv::Size checkerPattern;
 
 	//カメラ画像上のコーナー点
 	std::vector<cv::Point2f> camcorners;
@@ -92,11 +91,10 @@ public:
 	bool detect_proj; //プロジェクタ画像のコーナー点を検出したかどうか
 
 	//コンストラクタ
-	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, double trackingtime, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
+	ProjectorEstimation(int camwidth, int camheight, int prowidth, int proheight, double trackingtime, const char* backgroundImgFile)
 	{
 		camera = new WebCamera(camwidth, camheight);
 		projector = new WebCamera(prowidth, proheight);
-		checkerPattern = cv::Size(_checkerCol, _checkerRow);
 
 		kf.initKalmanfilter(18, 6, 0, 0.03);//等速度
 
@@ -104,21 +102,6 @@ public:
 		proj_img = cv::imread(backgroundImgFile);
 		proj_undist =  proj_img.clone();
 		cv::undistort(proj_img, proj_undist, projector->cam_K, projector->cam_dist);
-
-
-		////1フレーム前の対応点間距離の初期化
-		//for(int i = 0; i < _checkerCol*_checkerRow; i++)
-		//{
-		//	preDists.emplace_back(0.0);
-		//	preExpoDists.emplace_back(0.0);
-		//}
-
-		//std::vector<double> array;
-		//array.clear();
-		//for(int i = 0; i < _checkerCol*_checkerRow; i++)
-		//{
-		//	preDistsArrays.emplace_back(array);
-		//}
 
 		preframesize = 20; 
 		//sum計算

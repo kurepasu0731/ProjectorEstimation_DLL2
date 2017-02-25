@@ -9,7 +9,7 @@
 
 extern "C" {
 	//ProjectorEstimationインスタンス生成
-	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, double trackingtime, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset); 
+	DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, double trackingtime, const char* backgroundImgFile); 
 
 	//パラメータファイル、3次元復元ファイル読み込み
 	DLLExport void callloadParam(void* projectorestimation, double initR[], double initT[]);

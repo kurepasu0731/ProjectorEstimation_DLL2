@@ -1,9 +1,9 @@
 #include "wrapperForUnity.h"
 
 
-DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, double trackingtime, const char* backgroundImgFile, int _checkerRow, int _checkerCol, int _blockSize, int _x_offset, int _y_offset)
+DLLExport void* openProjectorEstimation(int camWidth, int camHeight, int proWidth, int proHeight, double trackingtime, const char* backgroundImgFile)
 {
-	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, trackingtime, backgroundImgFile, _checkerRow, _checkerCol, _blockSize, _x_offset, _y_offset));	
+	return static_cast<void *>(new ProjectorEstimation(camWidth, camHeight, proWidth, proHeight, trackingtime, backgroundImgFile));	
 }
 
 //パラメータファイル、3次元復元ファイル読み込み
